@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "@/app/lib/AuthContext";
 import { subscribeToMessages, loadOlderMessages, ChatMessage } from "@/app/lib/firestore";
-import type { ReplyTo } from "@/app/chat/[conversationId]/page";
+import type { ReplyTo } from "@/app/(app)/chat/[conversationId]/page";
 
 interface Props {
   conversationId: string;

@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     cookieStore.delete("kick_oauth_state");
     cookieStore.delete("kick_code_verifier");
 
-    return NextResponse.redirect(new URL("/chat", request.url));
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   } catch (error) {
     console.error("Kick OAuth callback error:", error);
     return NextResponse.redirect(new URL("/?error=auth_failed", request.url));

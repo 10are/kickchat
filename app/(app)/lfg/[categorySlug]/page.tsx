@@ -128,7 +128,7 @@ export default function CategoryPostsPage() {
         <div className={`flex items-center justify-between px-6 ${categoryBanner ? "-mt-10 relative z-10 pb-4" : "py-4"}`}>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => router.push("/chat/lfg")}
+              onClick={() => router.push("/lfg")}
               className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">

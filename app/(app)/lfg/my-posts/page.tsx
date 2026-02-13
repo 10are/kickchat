@@ -79,7 +79,7 @@ export default function MyPostsPage() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => router.push("/chat/lfg")}
+            onClick={() => router.push("/lfg")}
             className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -109,7 +109,7 @@ export default function MyPostsPage() {
               Bir oyun kategorisi seç ve ilan oluştur
             </p>
             <button
-              onClick={() => router.push("/chat/lfg")}
+              onClick={() => router.push("/lfg")}
               className="font-[family-name:var(--font-pixel)] text-[10px] text-kick hover:underline"
             >
               KATEGORİLERE GİT

@@ -18,22 +18,20 @@ export default function LFGPage() {
   const [categories, setCategories] = useState<KickCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [cursor, setCursor] = useState(0);
+  const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const observerRef = useRef<HTMLDivElement>(null);
 
-  const fetchCategories = useCallback(async (cursorVal: number, append = false) => {
+  const fetchCategories = useCallback(async (pageNum: number, append = false) => {
     try {
-      const res = await fetch(
-        `https://kick.com/api/v2/categories?cursor=${cursorVal}&limit=20`
-      );
+      const res = await fetch(`/api/categories?page=${pageNum}&limit=20`);
       if (!res.ok) throw new Error("API error");
       const data = await res.json();
-      const items: KickCategory[] = data.categories || data || [];
-      if (items.length < 20) setHasMore(false);
+      const items: KickCategory[] = data.data || [];
+      if (pageNum >= (data.last_page || 1)) setHasMore(false);
       setCategories((prev) => append ? [...prev, ...items] : items);
-      setCursor(cursorVal + items.length);
+      setPage(pageNum);
     } catch (err) {
       console.error("Failed to fetch categories:", err);
     } finally {
@@ -43,14 +41,14 @@ export default function LFGPage() {
   }, []);
 
   useEffect(() => {
-    fetchCategories(0);
+    fetchCategories(1);
   }, [fetchCategories]);
 
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
-    fetchCategories(cursor, true);
-  }, [cursor, loadingMore, hasMore, fetchCategories]);
+    fetchCategories(page + 1, true);
+  }, [page, loadingMore, hasMore, fetchCategories]);
 
   useEffect(() => {
     if (!observerRef.current) return;
@@ -74,10 +72,20 @@ export default function LFGPage() {
       )
     : categories;
 
+  const getBannerUrl = (cat: KickCategory) => {
+    if (!cat.banner) return "";
+    if (cat.banner.responsive) {
+      // responsive is srcset format: "url1 600w, url2 501w, ..."
+      const first = cat.banner.responsive.split(",")[0]?.trim().split(" ")[0];
+      if (first) return first;
+    }
+    return cat.banner.url || "";
+  };
+
   const handleCategoryClick = (cat: KickCategory) => {
-    const bannerUrl = cat.banner?.responsive || cat.banner?.url || "";
+    const bannerUrl = getBannerUrl(cat);
     router.push(
-      `/chat/lfg/${cat.slug}?cid=${cat.id}&name=${encodeURIComponent(cat.name)}&banner=${encodeURIComponent(bannerUrl)}`
+      `/lfg/${cat.slug}?cid=${cat.id}&name=${encodeURIComponent(cat.name)}&banner=${encodeURIComponent(bannerUrl)}`
     );
   };
 
@@ -116,7 +124,7 @@ export default function LFGPage() {
             </p>
           </div>
           <button
-            onClick={() => router.push("/chat/lfg/my-posts")}
+            onClick={() => router.push("/lfg/my-posts")}
             className="flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-hover hover:border-kick"
           >
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
@@ -168,7 +176,8 @@ export default function LFGPage() {
               <div className="relative aspect-[3/4] w-full overflow-hidden bg-surface-hover">
                 {cat.banner?.url ? (
                   <img
-                    src={cat.banner.responsive || cat.banner.url}
+                    src={cat.banner.url}
+                    srcSet={cat.banner.responsive || undefined}
                     alt={cat.name}
                     className="h-full w-full object-cover transition-transform group-hover:scale-105"
                     loading="lazy"

@@ -12,7 +12,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace("/chat");
+      router.replace("/dashboard");
     }
   }, [user, loading, router]);
 

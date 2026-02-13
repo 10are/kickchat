@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useAuth } from "@/app/lib/AuthContext";
 import { sendMessage } from "@/app/lib/firestore";
-import type { ReplyTo } from "@/app/chat/[conversationId]/page";
+import type { ReplyTo } from "@/app/(app)/chat/[conversationId]/page";
 
 const MAX_CHARS = 1000;
 

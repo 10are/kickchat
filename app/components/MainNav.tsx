@@ -6,6 +6,17 @@ import { useTheme } from "@/app/lib/ThemeContext";
 
 const navItems = [
   {
+    key: "dashboard",
+    label: "Ana Sayfa",
+    href: "/dashboard",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M9 22V12h6v10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
     key: "chat",
     label: "Chat",
     href: "/chat",
@@ -18,7 +29,7 @@ const navItems = [
   {
     key: "lfg",
     label: "LFG",
-    href: "/chat/lfg",
+    href: "/lfg",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
         <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -30,7 +41,7 @@ const navItems = [
   {
     key: "dedikodu",
     label: "Dedikodu",
-    href: "/chat/dedikodu",
+    href: "/dedikodu",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
         <path d="M12 9v2m0 4h.01M5.07 19H19a2.18 2.18 0 001.85-3.36l-6.93-12a2.18 2.18 0 00-3.84 0l-6.93 12A2.18 2.18 0 005.07 19z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -40,7 +51,7 @@ const navItems = [
   {
     key: "drama",
     label: "Drama",
-    href: "/chat/drama",
+    href: "/drama",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
         <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -57,22 +68,29 @@ export default function MainNav() {
   const { theme, toggleTheme } = useTheme();
 
   const getActiveKey = () => {
-    if (pathname.startsWith("/chat/lfg")) return "lfg";
-    if (pathname.startsWith("/chat/dedikodu")) return "dedikodu";
-    if (pathname.startsWith("/chat/drama")) return "drama";
-    return "chat";
+    if (pathname.startsWith("/lfg")) return "lfg";
+    if (pathname.startsWith("/dedikodu")) return "dedikodu";
+    if (pathname.startsWith("/drama")) return "drama";
+    if (pathname.startsWith("/chat")) return "chat";
+    if (pathname === "/dashboard") return "dashboard";
+    return "dashboard";
   };
 
   const activeKey = getActiveKey();
 
   return (
-    <div className="flex h-full w-16 flex-col items-center border-r border-border bg-background py-3">
+    <div className="flex h-full w-[72px] flex-col items-center border-r border-border bg-background py-3">
       {/* Logo */}
-      <div className="mb-4 flex h-10 w-10 items-center justify-center">
+      <button
+        onClick={() => router.push("/dashboard")}
+        className="mb-4 flex h-10 w-10 items-center justify-center hover:opacity-80 transition-opacity"
+      >
         <span className="font-[family-name:var(--font-pixel)] text-[8px] text-kick leading-tight text-center">
           KICK<br />CHAT
         </span>
-      </div>
+      </button>
+
+      <div className="w-8 h-px bg-border mb-3" />
 
       {/* Nav items */}
       <div className="flex flex-1 flex-col gap-1">
@@ -96,12 +114,12 @@ export default function MainNav() {
         ))}
       </div>
 
-      {/* Bottom actions */}
-      <div className="flex flex-col gap-1 mt-auto">
+      {/* Bottom section - Profile */}
+      <div className="flex flex-col items-center gap-2 mt-auto">
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
-          className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
           title="Tema değiştir"
         >
           {theme === "dark" ? (
@@ -116,20 +134,49 @@ export default function MainNav() {
           )}
         </button>
 
-        {/* User avatar / Logout */}
-        <button
-          onClick={logout}
-          className="flex h-11 w-11 items-center justify-center rounded-xl transition-colors hover:bg-surface-hover group"
-          title="Çıkış yap"
-        >
-          {kickUser?.avatar ? (
-            <img src={kickUser.avatar} alt="" className="h-8 w-8 rounded-lg group-hover:opacity-70 transition-opacity" />
-          ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-kick font-[family-name:var(--font-pixel)] text-[8px] text-black group-hover:opacity-70 transition-opacity">
-              {kickUser?.username?.[0]?.toUpperCase()}
-            </div>
-          )}
-        </button>
+        <div className="w-8 h-px bg-border" />
+
+        {/* User profile */}
+        <div className="flex flex-col items-center gap-1.5">
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="group relative flex h-10 w-10 items-center justify-center"
+            title={kickUser?.username || "Profil"}
+          >
+            {kickUser?.avatar ? (
+              <img src={kickUser.avatar} alt="" className="h-9 w-9 rounded-xl ring-2 ring-border group-hover:ring-kick transition-all" />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-kick font-[family-name:var(--font-pixel)] text-[10px] text-black ring-2 ring-border group-hover:ring-kick transition-all">
+                {kickUser?.username?.[0]?.toUpperCase()}
+              </div>
+            )}
+            {/* Tooltip */}
+            <span className="pointer-events-none absolute left-full ml-2 whitespace-nowrap rounded-lg bg-surface-hover px-2 py-1 text-[11px] font-medium text-foreground opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
+              {kickUser?.username}
+            </span>
+          </button>
+
+          {/* Username */}
+          <span className="text-[9px] font-medium text-muted-foreground truncate w-full text-center px-1">
+            {kickUser?.username}
+          </span>
+
+          {/* Logout */}
+          <button
+            onClick={logout}
+            className="group relative flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-400"
+            title="Çıkış Yap"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {/* Tooltip */}
+            <span className="pointer-events-none absolute left-full ml-2 whitespace-nowrap rounded-lg bg-surface-hover px-2 py-1 text-[11px] font-medium text-foreground opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
+              Çıkış Yap
+            </span>
+          </button>
+        </div>
       </div>
     </div>
   );
