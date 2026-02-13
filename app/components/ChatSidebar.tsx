@@ -7,18 +7,21 @@ import {
   subscribeToConversations,
   subscribeToFriends,
   subscribeToPendingRequests,
+  subscribeToBlockedUsers,
   Conversation,
   Friend,
   FriendRequest,
+  BlockedUser,
   getOrCreateConversation,
   acceptFriendRequest,
   rejectFriendRequest,
   removeFriend,
+  unblockUser,
 } from "@/app/lib/firestore";
 import { useRouter, useParams } from "next/navigation";
 import UserSearch from "./UserSearch";
 
-type Tab = "chats" | "friends" | "requests";
+type Tab = "chats" | "friends" | "requests" | "blocked";
 
 export default function ChatSidebar() {
   const { kickUser, logout } = useAuth();
@@ -26,6 +29,7 @@ export default function ChatSidebar() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
+  const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [tab, setTab] = useState<Tab>("chats");
   const [showSearch, setShowSearch] = useState(false);
   const router = useRouter();
@@ -37,7 +41,8 @@ export default function ChatSidebar() {
     const unsub1 = subscribeToConversations(kickUser.uid, setConversations);
     const unsub2 = subscribeToFriends(kickUser.uid, setFriends);
     const unsub3 = subscribeToPendingRequests(kickUser.uid, setRequests);
-    return () => { unsub1(); unsub2(); unsub3(); };
+    const unsub4 = subscribeToBlockedUsers(kickUser.uid, setBlockedUsers);
+    return () => { unsub1(); unsub2(); unsub3(); unsub4(); };
   }, [kickUser?.uid]);
 
   const getOtherUser = (conv: Conversation) => {
@@ -61,6 +66,7 @@ export default function ChatSidebar() {
     { key: "chats", label: "Sohbetler" },
     { key: "friends", label: "Arkadaşlar", count: friends.length },
     { key: "requests", label: "İstekler", count: requests.length },
+    { key: "blocked", label: "Engelli", count: blockedUsers.length },
   ];
 
   return (
@@ -292,6 +298,41 @@ export default function ChatSidebar() {
             ))}
           </>
         )}
+
+        {/* Blocked Tab */}
+        {tab === "blocked" && (
+          <>
+            {blockedUsers.length === 0 && (
+              <EmptyState icon="blocked" text="Engellenen kullanıcı yok" />
+            )}
+            {blockedUsers.map((blocked) => (
+              <div
+                key={blocked.id}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-surface-hover"
+              >
+                <div className="relative">
+                  {blocked.avatar ? (
+                    <img src={blocked.avatar} alt="" className="h-10 w-10 rounded-lg opacity-50" />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted font-[family-name:var(--font-pixel)] text-xs text-foreground opacity-50">
+                      {blocked.username[0]?.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground truncate">{blocked.username}</p>
+                  <p className="text-xs text-red-400">Engellendi</p>
+                </div>
+                <button
+                  onClick={() => kickUser && unblockUser(kickUser.uid, blocked.blockedId)}
+                  className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
+                >
+                  Kaldır
+                </button>
+              </div>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );
@@ -324,6 +365,12 @@ function EmptyState({
         {icon === "requests" && (
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" className="text-muted-foreground" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        )}
+        {icon === "blocked" && (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" className="text-muted-foreground" strokeWidth="2" />
+            <path d="M5.7 5.7l12.6 12.6" stroke="currentColor" className="text-muted-foreground" strokeWidth="2" strokeLinecap="round" />
           </svg>
         )}
       </div>

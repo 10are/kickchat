@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/app/lib/AuthContext";
 import { doc, onSnapshot } from "firebase/firestore";
-import { db, Conversation } from "@/app/lib/firestore";
+import { db, Conversation, blockUser } from "@/app/lib/firestore";
 import MessageList from "@/app/components/MessageList";
 import MessageInput from "@/app/components/MessageInput";
 
@@ -22,6 +22,7 @@ export default function ConversationPage() {
   const [conv, setConv] = useState<Conversation | null>(null);
   const [unauthorized, setUnauthorized] = useState(false);
   const [replyTo, setReplyTo] = useState<ReplyTo | null>(null);
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "conversations", conversationId), (snap) => {
@@ -64,6 +65,17 @@ export default function ConversationPage() {
   const otherUsername = otherId ? conv?.participantUsernames?.[otherId] || "?" : "?";
   const otherAvatar = otherId ? conv?.participantAvatars?.[otherId] || null : null;
 
+  const handleBlock = async () => {
+    if (!kickUser || !otherId) return;
+    await blockUser(kickUser.uid, {
+      kickUserId: otherId,
+      username: otherUsername,
+      avatar: otherAvatar,
+    });
+    setShowBlockConfirm(false);
+    router.push("/chat");
+  };
+
   return (
     <div className="flex flex-1 flex-col min-h-0">
       {/* Chat Header */}
@@ -75,7 +87,39 @@ export default function ConversationPage() {
             {otherUsername[0]?.toUpperCase()}
           </div>
         )}
-        <span className="font-medium text-foreground text-sm">{otherUsername}</span>
+        <span className="flex-1 font-medium text-foreground text-sm">{otherUsername}</span>
+
+        {/* Block button */}
+        <div className="relative">
+          {showBlockConfirm ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Engellensin mi?</span>
+              <button
+                onClick={handleBlock}
+                className="rounded-lg bg-red-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-600 transition-colors"
+              >
+                Evet
+              </button>
+              <button
+                onClick={() => setShowBlockConfirm(false)}
+                className="rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-surface-hover transition-colors"
+              >
+                İptal
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowBlockConfirm(true)}
+              className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-red-400"
+              title="Engelle"
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="2" />
+                <path d="M5 5l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}

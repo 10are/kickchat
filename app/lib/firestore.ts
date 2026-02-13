@@ -71,12 +71,24 @@ export interface Friend {
   addedAt: Timestamp | null;
 }
 
+export interface BlockedUser {
+  id: string;
+  blockedId: string;
+  username: string;
+  avatar: string | null;
+  blockedAt: Timestamp | null;
+}
+
 // ── Friend System ──
 
 export async function sendFriendRequest(
   from: { uid: string; username: string; avatar: string | null },
   to: { kickUserId: string; username: string; avatar: string | null }
 ) {
+  // Check if blocked
+  const blockedDoc = await getDoc(doc(db, "users", from.uid, "blocked", to.kickUserId));
+  if (blockedDoc.exists()) return;
+
   // Check if request already exists
   const q = query(
     collection(db, "friendRequests"),
@@ -208,38 +220,27 @@ export function subscribeToConversations(
   userId: string,
   callback: (conversations: Conversation[]) => void
 ) {
+  // Use simple query without orderBy to avoid composite index requirement
   const q = query(
     collection(db, "conversations"),
-    where("participants", "array-contains", userId),
-    orderBy("lastMessageAt", "desc")
+    where("participants", "array-contains", userId)
   );
 
   return onSnapshot(
     q,
     (snapshot) => {
-      const conversations = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      })) as Conversation[];
+      const conversations = snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() } as Conversation))
+        .sort((a, b) => {
+          const aTime = a.lastMessageAt?.toMillis() || 0;
+          const bTime = b.lastMessageAt?.toMillis() || 0;
+          return bTime - aTime;
+        });
       callback(conversations);
     },
     (error) => {
       console.error("Conversations subscription error:", error);
-      // Fallback: try without orderBy (index might not exist yet)
-      const fallbackQ = query(
-        collection(db, "conversations"),
-        where("participants", "array-contains", userId)
-      );
-      onSnapshot(fallbackQ, (snapshot) => {
-        const conversations = snapshot.docs
-          .map((d) => ({ id: d.id, ...d.data() } as Conversation))
-          .sort((a, b) => {
-            const aTime = a.lastMessageAt?.toMillis() || 0;
-            const bTime = b.lastMessageAt?.toMillis() || 0;
-            return bTime - aTime;
-          });
-        callback(conversations);
-      });
+      callback([]);
     }
   );
 }
@@ -313,6 +314,50 @@ export async function updateOnlineStatus(userId: string, online: boolean) {
     { online, lastSeen: serverTimestamp() },
     { merge: true }
   );
+}
+
+// ── Block System ──
+
+export async function blockUser(
+  userId: string,
+  target: { kickUserId: string; username: string; avatar: string | null }
+) {
+  await setDoc(doc(db, "users", userId, "blocked", target.kickUserId), {
+    blockedId: target.kickUserId,
+    username: target.username,
+    avatar: target.avatar,
+    blockedAt: serverTimestamp(),
+  });
+
+  // Also remove from friends if they were friends
+  const friendDoc = await getDoc(doc(db, "users", userId, "friends", target.kickUserId));
+  if (friendDoc.exists()) {
+    await deleteDoc(doc(db, "users", userId, "friends", target.kickUserId));
+    await deleteDoc(doc(db, "users", target.kickUserId, "friends", userId));
+  }
+}
+
+export async function unblockUser(userId: string, blockedId: string) {
+  await deleteDoc(doc(db, "users", userId, "blocked", blockedId));
+}
+
+export function subscribeToBlockedUsers(
+  userId: string,
+  callback: (blocked: BlockedUser[]) => void
+) {
+  const q = query(collection(db, "users", userId, "blocked"));
+  return onSnapshot(q, (snapshot) => {
+    const blocked = snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    })) as BlockedUser[];
+    callback(blocked);
+  });
+}
+
+export async function isBlockedByMe(userId: string, otherId: string): Promise<boolean> {
+  const docSnap = await getDoc(doc(db, "users", userId, "blocked", otherId));
+  return docSnap.exists();
 }
 
 export { db };

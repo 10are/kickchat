@@ -12,7 +12,17 @@ service cloud.firestore {
 
       // Friends subcollection
       match /friends/{friendId} {
-        // Only the user can read/write their own friends list
+        // Owner can do anything with their friends list
+        allow read, create, update: if request.auth != null && request.auth.uid == userId;
+        // Owner OR the friend themselves can delete (for mutual unfriend/block)
+        allow delete: if request.auth != null
+                      && (request.auth.uid == userId || request.auth.uid == friendId);
+        // The friend can create their own entry (for accept friend request)
+        allow create: if request.auth != null && request.auth.uid == friendId;
+      }
+
+      // Blocked users subcollection
+      match /blocked/{blockedId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
@@ -34,11 +44,11 @@ service cloud.firestore {
         // Only conversation participants can read messages
         allow read: if request.auth != null
                     && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
-        // Only conversation participants can send messages
+        // Only conversation participants can send messages, senderId must match auth
         allow create: if request.auth != null
                       && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants
                       && request.resource.data.senderId == request.auth.uid;
-        // Allow updating read status
+        // Allow updating read status by participants
         allow update: if request.auth != null
                       && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
       }
