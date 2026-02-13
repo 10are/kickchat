@@ -53,9 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  // Online status tracking
+  // Online status tracking - wait for both Firebase Auth AND kickUser
   useEffect(() => {
-    if (!kickUser?.uid) return;
+    if (!kickUser?.uid || !user) return;
 
     updateOnlineStatus(kickUser.uid, true);
 
@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("beforeunload", handleBeforeUnload);
       updateOnlineStatus(kickUser.uid, false);
     };
-  }, [kickUser?.uid]);
+  }, [kickUser?.uid, user]);
 
   const logout = async () => {
     if (kickUser?.uid) {

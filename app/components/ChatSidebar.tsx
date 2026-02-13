@@ -101,7 +101,7 @@ export default function ChatSidebar() {
           >
             {t.label}
             {t.count && t.count > 0 ? (
-              <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-kick px-1 font-[family-name:var(--font-pixel)] text-[8px] text-black">
+              <span className="absolute -top-0.5 right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-kick px-1 font-[family-name:var(--font-pixel)] text-[7px] text-black">
                 {t.count}
               </span>
             ) : null}
@@ -117,12 +117,27 @@ export default function ChatSidebar() {
         {/* Chats Tab */}
         {tab === "chats" && (
           <>
+            {/* New chat button */}
+            <button
+              onClick={() => setShowSearch(true)}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-surface-hover border-b border-border"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-kick/10">
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="text-kick">
+                  <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </div>
+              <span className="font-[family-name:var(--font-pixel)] text-[9px] text-kick">
+                YENI SOHBET
+              </span>
+            </button>
+
             {conversations.length === 0 && (
               <EmptyState
                 icon="chat"
                 text="Henüz sohbet yok"
-                action="Arkadaş ekle ve sohbet başlat"
-                onAction={() => setTab("friends")}
+                action="Kullanıcı ara ve sohbet başlat"
+                onAction={() => setShowSearch(true)}
               />
             )}
             {conversations.map((conv) => {

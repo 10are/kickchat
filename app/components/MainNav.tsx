@@ -157,7 +157,7 @@ export default function MainNav() {
           </button>
 
           {/* Username */}
-          <span className="text-[9px] font-medium text-muted-foreground truncate w-full text-center px-1">
+          <span className="text-[9px] font-medium text-muted-foreground truncate text-center max-w-[60px] block overflow-hidden">
             {kickUser?.username}
           </span>
 
