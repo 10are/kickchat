@@ -27,6 +27,11 @@ export interface ChatMessage {
   text: string;
   createdAt: Timestamp | null;
   read: boolean;
+  replyTo?: {
+    id: string;
+    text: string;
+    senderName: string;
+  } | null;
 }
 
 export interface Conversation {
@@ -209,13 +214,34 @@ export function subscribeToConversations(
     orderBy("lastMessageAt", "desc")
   );
 
-  return onSnapshot(q, (snapshot) => {
-    const conversations = snapshot.docs.map((d) => ({
-      id: d.id,
-      ...d.data(),
-    })) as Conversation[];
-    callback(conversations);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const conversations = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as Conversation[];
+      callback(conversations);
+    },
+    (error) => {
+      console.error("Conversations subscription error:", error);
+      // Fallback: try without orderBy (index might not exist yet)
+      const fallbackQ = query(
+        collection(db, "conversations"),
+        where("participants", "array-contains", userId)
+      );
+      onSnapshot(fallbackQ, (snapshot) => {
+        const conversations = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() } as Conversation))
+          .sort((a, b) => {
+            const aTime = a.lastMessageAt?.toMillis() || 0;
+            const bTime = b.lastMessageAt?.toMillis() || 0;
+            return bTime - aTime;
+          });
+        callback(conversations);
+      });
+    }
+  );
 }
 
 // ── Messages ──
@@ -223,16 +249,23 @@ export function subscribeToConversations(
 export async function sendMessage(
   conversationId: string,
   senderId: string,
-  text: string
+  text: string,
+  replyTo?: { id: string; text: string; senderName: string } | null
 ) {
   const messagesRef = collection(db, "conversations", conversationId, "messages");
 
-  await addDoc(messagesRef, {
+  const messageData: Record<string, unknown> = {
     senderId,
     text,
     createdAt: serverTimestamp(),
     read: false,
-  });
+  };
+
+  if (replyTo) {
+    messageData.replyTo = replyTo;
+  }
+
+  await addDoc(messagesRef, messageData);
 
   const convRef = doc(db, "conversations", conversationId);
   await updateDoc(convRef, {

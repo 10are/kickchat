@@ -38,7 +38,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="flex h-screen bg-background">
       <ChatSidebar />
-      <div className="flex flex-1 flex-col">{children}</div>
+      <div className="flex flex-1 flex-col min-h-0">{children}</div>
     </div>
   );
 }
