@@ -14,6 +14,9 @@ import {
   getDocs,
   updateDoc,
   deleteDoc,
+  limitToLast,
+  limit,
+  endBefore,
 } from "firebase/firestore";
 import { app } from "@/app/firebase";
 
@@ -275,13 +278,16 @@ export async function sendMessage(
   });
 }
 
+const MESSAGES_PER_PAGE = 30;
+
 export function subscribeToMessages(
   conversationId: string,
   callback: (messages: ChatMessage[]) => void
 ) {
   const q = query(
     collection(db, "conversations", conversationId, "messages"),
-    orderBy("createdAt", "asc")
+    orderBy("createdAt", "asc"),
+    limitToLast(MESSAGES_PER_PAGE)
   );
 
   return onSnapshot(q, (snapshot) => {
@@ -291,6 +297,24 @@ export function subscribeToMessages(
     })) as ChatMessage[];
     callback(messages);
   });
+}
+
+export async function loadOlderMessages(
+  conversationId: string,
+  oldestTimestamp: Timestamp
+): Promise<ChatMessage[]> {
+  const q = query(
+    collection(db, "conversations", conversationId, "messages"),
+    orderBy("createdAt", "asc"),
+    endBefore(oldestTimestamp),
+    limitToLast(MESSAGES_PER_PAGE)
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as ChatMessage[];
 }
 
 // ── Users ──

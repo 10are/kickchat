@@ -5,6 +5,8 @@ import { useAuth } from "@/app/lib/AuthContext";
 import { sendMessage } from "@/app/lib/firestore";
 import type { ReplyTo } from "@/app/chat/[conversationId]/page";
 
+const MAX_CHARS = 1000;
+
 interface Props {
   conversationId: string;
   replyTo: ReplyTo | null;
@@ -18,7 +20,7 @@ export default function MessageInput({ conversationId, replyTo, onCancelReply }:
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSend = async () => {
-    if (!text.trim() || !kickUser || sending) return;
+    if (!text.trim() || !kickUser || sending || text.length > MAX_CHARS) return;
 
     setSending(true);
     try {
@@ -31,6 +33,15 @@ export default function MessageInput({ conversationId, replyTo, onCancelReply }:
     }
     setSending(false);
   };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val.length <= MAX_CHARS) {
+      setText(val);
+    }
+  };
+
+  const isOverLimit = text.length > MAX_CHARS * 0.9;
 
   return (
     <div className="border-t border-border bg-surface shrink-0">
@@ -54,18 +65,26 @@ export default function MessageInput({ conversationId, replyTo, onCancelReply }:
       )}
 
       <div className="flex items-center gap-2 px-4 py-2.5">
-        <input
-          ref={inputRef}
-          type="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-          placeholder="Mesaj yaz..."
-          className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder-muted-foreground outline-none transition-colors focus:border-kick"
-        />
+        <div className="flex-1 relative">
+          <input
+            ref={inputRef}
+            type="text"
+            value={text}
+            onChange={handleChange}
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+            placeholder="Mesaj yaz..."
+            maxLength={MAX_CHARS}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder-muted-foreground outline-none transition-colors focus:border-kick"
+          />
+          {isOverLimit && (
+            <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[10px] ${text.length >= MAX_CHARS ? "text-red-400" : "text-muted-foreground"}`}>
+              {text.length}/{MAX_CHARS}
+            </span>
+          )}
+        </div>
         <button
           onClick={handleSend}
-          disabled={!text.trim() || sending}
+          disabled={!text.trim() || sending || text.length > MAX_CHARS}
           className="flex h-9 w-9 items-center justify-center rounded-lg bg-kick text-black transition-all hover:bg-kick-hover disabled:opacity-30"
         >
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none">

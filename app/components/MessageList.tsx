@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "@/app/lib/AuthContext";
-import { subscribeToMessages, ChatMessage } from "@/app/lib/firestore";
+import { subscribeToMessages, loadOlderMessages, ChatMessage } from "@/app/lib/firestore";
 import type { ReplyTo } from "@/app/chat/[conversationId]/page";
 
 interface Props {
@@ -20,18 +20,73 @@ export default function MessageList({
 }: Props) {
   const { kickUser } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [olderMessages, setOlderMessages] = useState<ChatMessage[]>([]);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isInitialLoad = useRef(true);
+  const prevScrollHeight = useRef(0);
 
+  // Subscribe to latest messages
   useEffect(() => {
+    isInitialLoad.current = true;
+    setOlderMessages([]);
+    setHasMore(true);
     const unsub = subscribeToMessages(conversationId, setMessages);
     return () => unsub();
   }, [conversationId]);
 
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
-    if (scrollRef.current) {
+    if (!scrollRef.current) return;
+    if (isInitialLoad.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      isInitialLoad.current = false;
+      return;
+    }
+    // Only auto-scroll if user is near the bottom
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    if (scrollHeight - scrollTop - clientHeight < 150) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Load older messages when scrolling to top
+  const handleScroll = useCallback(async () => {
+    if (!scrollRef.current || loadingOlder || !hasMore) return;
+    if (scrollRef.current.scrollTop > 50) return;
+
+    const allMessages = [...olderMessages, ...messages];
+    const oldest = allMessages.find((m) => m.createdAt);
+    if (!oldest?.createdAt) return;
+
+    setLoadingOlder(true);
+    prevScrollHeight.current = scrollRef.current.scrollHeight;
+
+    try {
+      const older = await loadOlderMessages(conversationId, oldest.createdAt);
+      if (older.length === 0) {
+        setHasMore(false);
+      } else {
+        setOlderMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.id));
+          const newMessages = older.filter((m) => !existingIds.has(m.id));
+          return [...newMessages, ...prev];
+        });
+      }
+    } catch (err) {
+      console.error("Load older messages error:", err);
+    }
+    setLoadingOlder(false);
+  }, [loadingOlder, hasMore, olderMessages, messages, conversationId]);
+
+  // Preserve scroll position after loading older messages
+  useEffect(() => {
+    if (!scrollRef.current || prevScrollHeight.current === 0) return;
+    const newScrollHeight = scrollRef.current.scrollHeight;
+    scrollRef.current.scrollTop = newScrollHeight - prevScrollHeight.current;
+    prevScrollHeight.current = 0;
+  }, [olderMessages]);
 
   const handleReply = (msg: ChatMessage) => {
     const senderName = participantUsernames[msg.senderId] || "?";
@@ -42,18 +97,41 @@ export default function MessageList({
     });
   };
 
+  const allMessages = [...olderMessages, ...messages];
+  // Deduplicate (older messages might overlap with realtime)
+  const seen = new Set<string>();
+  const uniqueMessages = allMessages.filter((m) => {
+    if (seen.has(m.id)) return false;
+    seen.add(m.id);
+    return true;
+  });
+
   return (
-    <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0 px-4 py-3">
-      {messages.length === 0 && (
+    <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto min-h-0 px-4 py-3">
+      {loadingOlder && (
+        <div className="flex justify-center py-2">
+          <div className="flex gap-1">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="h-1.5 w-1.5 rounded-full bg-muted-foreground"
+                style={{ animation: `pixel-blink 1s step-end ${i * 0.2}s infinite` }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {uniqueMessages.length === 0 && (
         <div className="flex h-full items-center justify-center">
           <p className="text-sm text-muted-foreground">Henüz mesaj yok</p>
         </div>
       )}
 
       <div className="space-y-0.5">
-        {messages.map((msg, idx) => {
+        {uniqueMessages.map((msg, idx) => {
           const isMe = msg.senderId === kickUser?.uid;
-          const prevMsg = idx > 0 ? messages[idx - 1] : null;
+          const prevMsg = idx > 0 ? uniqueMessages[idx - 1] : null;
           const isConsecutive = prevMsg?.senderId === msg.senderId;
           const senderName = participantUsernames[msg.senderId] || "?";
           const senderAvatar = participantAvatars[msg.senderId] || null;

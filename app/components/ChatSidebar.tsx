@@ -217,7 +217,8 @@ export default function ChatSidebar() {
             {friends.map((friend) => (
               <div
                 key={friend.id}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-surface-hover"
+                onClick={() => handleStartChatWithFriend(friend)}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-surface-hover cursor-pointer"
               >
                 <div className="relative">
                   {friend.avatar ? (
@@ -231,26 +232,15 @@ export default function ChatSidebar() {
                 <span className="flex-1 text-sm font-medium text-foreground truncate">
                   {friend.username}
                 </span>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => handleStartChatWithFriend(friend)}
-                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-active hover:text-kick"
-                    title="Mesaj gönder"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-                      <path d="M18 10c0 4.418-3.582 7-8 7a9.06 9.06 0 01-3-.5L2 18l1.5-3.5C2.5 13.5 2 11.846 2 10c0-4.418 3.582-8 8-8s8 3.582 8 8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => kickUser && removeFriend(kickUser.uid, friend.oderId)}
-                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-active hover:text-red-400"
-                    title="Arkadaşlıktan çıkar"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-                      <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                  </button>
-                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); kickUser && removeFriend(kickUser.uid, friend.oderId); }}
+                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-active hover:text-red-400"
+                  title="Arkadaşlıktan çıkar"
+                >
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                    <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
               </div>
             ))}
           </>
