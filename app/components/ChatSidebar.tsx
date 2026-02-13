@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/lib/AuthContext";
-import { useTheme } from "@/app/lib/ThemeContext";
 import {
   subscribeToConversations,
   subscribeToFriends,
@@ -24,8 +23,7 @@ import UserSearch from "./UserSearch";
 type Tab = "chats" | "friends" | "requests" | "blocked";
 
 export default function ChatSidebar() {
-  const { kickUser, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { kickUser } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
@@ -73,56 +71,17 @@ export default function ChatSidebar() {
     <div className="flex h-full w-80 flex-col border-r border-border bg-surface">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            {kickUser?.avatar ? (
-              <img src={kickUser.avatar} alt="" className="h-8 w-8 rounded-lg" />
-            ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-kick font-[family-name:var(--font-pixel)] text-xs text-black">
-                {kickUser?.username?.[0]?.toUpperCase()}
-              </div>
-            )}
-            <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-sm border-2 border-surface bg-kick" />
-          </div>
-          <span className="font-semibold text-foreground text-sm">{kickUser?.username}</span>
-        </div>
-        <div className="flex gap-1">
-          <button
-            onClick={() => setShowSearch(!showSearch)}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
-            title="Kullanıcı ara"
-          >
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-              <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="2" />
-              <path d="M13.5 13.5L17 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
-          <button
-            onClick={toggleTheme}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
-            title="Tema değiştir"
-          >
-            {theme === "dark" ? (
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-                <circle cx="10" cy="10" r="4" fill="currentColor" />
-                <path d="M10 2v2M10 16v2M2 10h2M16 10h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" fill="currentColor" />
-              </svg>
-            )}
-          </button>
-          <button
-            onClick={logout}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-red-400"
-            title="Çıkış yap"
-          >
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-              <path d="M7 17H4a1 1 0 01-1-1V4a1 1 0 011-1h3M13 14l4-4-4-4M17 10H7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        </div>
+        <span className="font-semibold text-foreground text-sm">Mesajlar</span>
+        <button
+          onClick={() => setShowSearch(!showSearch)}
+          className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
+          title="Kullanıcı ara"
+        >
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+            <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="2" />
+            <path d="M13.5 13.5L17 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
       </div>
 
       {/* User Search Overlay */}

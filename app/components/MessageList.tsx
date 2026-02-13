@@ -38,9 +38,14 @@ export default function MessageList({
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
-    if (!scrollRef.current) return;
+    if (!scrollRef.current || messages.length === 0) return;
     if (isInitialLoad.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      // Use requestAnimationFrame to ensure DOM has rendered
+      requestAnimationFrame(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      });
       isInitialLoad.current = false;
       return;
     }

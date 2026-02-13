@@ -54,6 +54,25 @@ service cloud.firestore {
       }
     }
 
+    // LFG Posts collection
+    match /lfgPosts/{postId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.status == "active"
+                    && request.resource.data.description is string
+                    && request.resource.data.description.size() <= 500
+                    && request.resource.data.categoryId is number
+                    && request.resource.data.platform is string
+                    && request.resource.data.language is string;
+      allow update: if request.auth != null
+                    && resource.data.authorId == request.auth.uid
+                    && request.resource.data.authorId == resource.data.authorId
+                    && request.resource.data.categoryId == resource.data.categoryId;
+      allow delete: if request.auth != null
+                    && resource.data.authorId == request.auth.uid;
+    }
+
     // Friend requests collection
     match /friendRequests/{requestId} {
       // Sender and receiver can read their own requests

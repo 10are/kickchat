@@ -17,6 +17,7 @@ import {
   limitToLast,
   limit,
   endBefore,
+  startAfter,
 } from "firebase/firestore";
 import { app } from "@/app/firebase";
 
@@ -382,6 +383,176 @@ export function subscribeToBlockedUsers(
 export async function isBlockedByMe(userId: string, otherId: string): Promise<boolean> {
   const docSnap = await getDoc(doc(db, "users", userId, "blocked", otherId));
   return docSnap.exists();
+}
+
+// ── LFG System ──
+
+export interface LfgPost {
+  id: string;
+  authorId: string;
+  authorUsername: string;
+  authorAvatar: string | null;
+  categoryId: number;
+  categoryName: string;
+  categorySlug: string;
+  categoryBanner: string | null;
+  description: string;
+  platform: string;
+  language: string;
+  rank: string;
+  micRequired: boolean;
+  createdAt: Timestamp | null;
+  expiresAt: Timestamp | null;
+  updatedAt: Timestamp | null;
+  status: "active" | "deleted";
+}
+
+const LFG_POSTS_PER_PAGE = 20;
+const LFG_TTL_HOURS = 4;
+const MAX_ACTIVE_POSTS = 3;
+
+export async function createLfgPost(
+  author: { uid: string; username: string; avatar: string | null },
+  category: { id: number; name: string; slug: string; banner: string | null },
+  post: { description: string; platform: string; language: string; rank: string; micRequired: boolean }
+): Promise<string> {
+  // Check active post limit
+  const countQ = query(
+    collection(db, "lfgPosts"),
+    where("authorId", "==", author.uid),
+    where("status", "==", "active"),
+    where("expiresAt", ">", Timestamp.now())
+  );
+  const countSnap = await getDocs(countQ);
+  if (countSnap.size >= MAX_ACTIVE_POSTS) {
+    throw new Error("Maksimum aktif ilan sayısına ulaştınız (3)");
+  }
+
+  const expiresAt = new Date(Date.now() + LFG_TTL_HOURS * 60 * 60 * 1000);
+
+  const docRef = await addDoc(collection(db, "lfgPosts"), {
+    authorId: author.uid,
+    authorUsername: author.username,
+    authorAvatar: author.avatar,
+    categoryId: category.id,
+    categoryName: category.name,
+    categorySlug: category.slug,
+    categoryBanner: category.banner,
+    description: post.description.slice(0, 500),
+    platform: post.platform,
+    language: post.language,
+    rank: post.rank.slice(0, 50),
+    micRequired: post.micRequired,
+    createdAt: serverTimestamp(),
+    expiresAt: Timestamp.fromDate(expiresAt),
+    updatedAt: serverTimestamp(),
+    status: "active",
+  });
+
+  return docRef.id;
+}
+
+export function subscribeToLfgPosts(
+  categoryId: number,
+  callback: (posts: LfgPost[]) => void
+): () => void {
+  const now = Timestamp.now();
+  const q = query(
+    collection(db, "lfgPosts"),
+    where("categoryId", "==", categoryId),
+    where("status", "==", "active"),
+    where("expiresAt", ">", now),
+    orderBy("expiresAt", "asc"),
+    limit(LFG_POSTS_PER_PAGE)
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const posts = snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() } as LfgPost))
+        .filter((p) => p.expiresAt && p.expiresAt.toMillis() > Date.now());
+      callback(posts);
+    },
+    (error) => {
+      console.error("LFG posts subscription error:", error);
+      callback([]);
+    }
+  );
+}
+
+export async function loadMoreLfgPosts(
+  categoryId: number,
+  lastExpiresAt: Timestamp
+): Promise<LfgPost[]> {
+  const now = Timestamp.now();
+  const q = query(
+    collection(db, "lfgPosts"),
+    where("categoryId", "==", categoryId),
+    where("status", "==", "active"),
+    where("expiresAt", ">", now),
+    orderBy("expiresAt", "asc"),
+    startAfter(lastExpiresAt),
+    limit(LFG_POSTS_PER_PAGE)
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as LfgPost[];
+}
+
+export function subscribeToMyLfgPosts(
+  userId: string,
+  callback: (posts: LfgPost[]) => void
+): () => void {
+  const q = query(
+    collection(db, "lfgPosts"),
+    where("authorId", "==", userId),
+    orderBy("createdAt", "desc"),
+    limit(50)
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const posts = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as LfgPost[];
+      callback(posts);
+    },
+    (error) => {
+      console.error("My LFG posts subscription error:", error);
+      callback([]);
+    }
+  );
+}
+
+export async function updateLfgPost(
+  postId: string,
+  updates: Partial<Pick<LfgPost, "description" | "platform" | "language" | "rank" | "micRequired">>
+): Promise<void> {
+  await updateDoc(doc(db, "lfgPosts", postId), {
+    ...updates,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteLfgPost(postId: string): Promise<void> {
+  await updateDoc(doc(db, "lfgPosts", postId), {
+    status: "deleted",
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function refreshLfgPost(postId: string): Promise<void> {
+  const expiresAt = new Date(Date.now() + LFG_TTL_HOURS * 60 * 60 * 1000);
+  await updateDoc(doc(db, "lfgPosts", postId), {
+    expiresAt: Timestamp.fromDate(expiresAt),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export { db };
