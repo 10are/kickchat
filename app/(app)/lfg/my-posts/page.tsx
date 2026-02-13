@@ -123,7 +123,7 @@ export default function MyPostsPage() {
             <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
               Aktif İlanlar
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
               {activePosts.map((post) => (
                 <div key={post.id} className="relative">
                   <LfgPostCard
@@ -166,7 +166,7 @@ export default function MyPostsPage() {
             <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
               Süresi Dolmuş
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
               {expiredPosts.map((post) => (
                 <LfgPostCard key={post.id} post={post} showActions />
               ))}
