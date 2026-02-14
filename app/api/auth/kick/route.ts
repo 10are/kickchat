@@ -1,6 +1,5 @@
 import { generateState, generateCodeVerifier } from "arctic";
 import { kick } from "@/app/lib/kick";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -9,9 +8,9 @@ export async function GET() {
 
   const url = kick.createAuthorizationURL(state, codeVerifier, ["user:read"]);
 
-  const cookieStore = await cookies();
+  const response = NextResponse.redirect(url);
 
-  cookieStore.set("kick_oauth_state", state, {
+  response.cookies.set("kick_oauth_state", state, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 10,
@@ -19,7 +18,7 @@ export async function GET() {
     sameSite: "lax",
   });
 
-  cookieStore.set("kick_code_verifier", codeVerifier, {
+  response.cookies.set("kick_code_verifier", codeVerifier, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 10,
@@ -27,5 +26,5 @@ export async function GET() {
     sameSite: "lax",
   });
 
-  return NextResponse.redirect(url);
+  return response;
 }
