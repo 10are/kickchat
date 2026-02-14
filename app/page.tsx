@@ -57,27 +57,14 @@ export default function Home() {
       </button>
 
       <div className="flex flex-col items-center gap-10">
-        {/* Pixel Art Logo */}
+        {/* Logo */}
         <div className="flex flex-col items-center gap-4">
-          <div className="grid grid-cols-5 gap-0.5">
-            {[
-              1,0,1,0,1,
-              1,1,0,1,1,
-              0,1,1,1,0,
-              1,1,0,1,1,
-              1,0,1,0,1,
-            ].map((on, i) => (
-              <div
-                key={i}
-                className={`h-3 w-3 transition-all ${on ? "bg-kick" : "bg-transparent"}`}
-              />
-            ))}
-          </div>
+          <img src="/logo.png" alt="KickSocially" className="h-28 w-28 drop-shadow-lg" />
           <h1 className="font-[family-name:var(--font-pixel)] text-2xl text-kick">
-            KICKCHAT
+            KICKSOCIALLY
           </h1>
           <p className="max-w-xs text-center text-sm text-muted-foreground">
-            Kick.com hesabınla giriş yap, diğer Kick kullanıcılarıyla özel mesajlaş.
+            Kick.com topluluğu için sosyal platform. Giriş yap, mesajlaş, arkadaş bul, yayın izle.
           </p>
         </div>
 
@@ -104,6 +91,22 @@ export default function Home() {
             ))}
           </div>
           <div className="h-px w-12 bg-border" />
+        </div>
+
+        {/* Footer */}
+        <div className="flex flex-col items-center gap-1 mt-4">
+          <a
+            href="https://kicksocially.com"
+            className="font-[family-name:var(--font-pixel)] text-[7px] text-muted-foreground hover:text-kick transition-colors"
+          >
+            kicksocially.com
+          </a>
+          <a
+            href="mailto:developerx29846@gmail.com"
+            className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            developerx29846@gmail.com
+          </a>
         </div>
       </div>
     </div>

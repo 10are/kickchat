@@ -45,6 +45,7 @@ export interface Conversation {
   participantAvatars: Record<string, string | null>;
   lastMessage: string;
   lastMessageAt: Timestamp | null;
+  lastMessageSenderId?: string;
 }
 
 export interface UserProfile {
@@ -276,6 +277,7 @@ export async function sendMessage(
   await updateDoc(convRef, {
     lastMessage: text,
     lastMessageAt: serverTimestamp(),
+    lastMessageSenderId: senderId,
   });
 }
 

@@ -15,8 +15,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "KickChat",
-  description: "Private messaging for Kick.com users",
+  title: "KickSocially",
+  description: "Kick.com topluluğu için sosyal platform — mesajlaş, arkadaş bul, yayın izle",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({

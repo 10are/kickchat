@@ -95,11 +95,9 @@ export default function MainNav() {
       {/* Logo */}
       <button
         onClick={() => router.push("/dashboard")}
-        className="mb-4 flex h-10 w-10 items-center justify-center hover:opacity-80 transition-opacity"
+        className="mb-4 flex h-10 w-10 items-center justify-center hover:scale-110 active:scale-95 transition-transform"
       >
-        <span className="font-[family-name:var(--font-pixel)] text-[8px] text-kick leading-tight text-center">
-          KICK<br />CHAT
-        </span>
+        <img src="/logo.png" alt="KickSocially" className="h-11 w-11" />
       </button>
 
       <div className="w-8 h-px bg-border mb-3" />

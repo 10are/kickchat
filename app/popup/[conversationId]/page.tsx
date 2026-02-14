@@ -40,7 +40,7 @@ export default function PopupChatPage() {
     if (!conv || !kickUser) return;
     const otherId = conv.participants.find((p) => p !== kickUser.uid);
     const otherName = otherId ? conv.participantUsernames?.[otherId] || "Chat" : "Chat";
-    document.title = `${otherName} - KickChat`;
+    document.title = `${otherName} - KickSocially`;
   }, [conv, kickUser]);
 
   if (loading) {
@@ -101,9 +101,7 @@ export default function PopupChatPage() {
         <span className="flex-1 font-[family-name:var(--font-pixel)] text-[9px] text-foreground truncate">
           {otherUsername}
         </span>
-        <span className="font-[family-name:var(--font-pixel)] text-[6px] text-kick">
-          KICKCHAT
-        </span>
+        <img src="/logo.png" alt="" className="h-5 w-5 shrink-0" />
       </div>
 
       {/* Messages */}
