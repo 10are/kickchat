@@ -3,17 +3,26 @@ import { getAdminAuth, getAdminDb } from "@/app/lib/firebase-admin";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
+function getBaseUrl(request: NextRequest): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  const proto = request.headers.get("x-forwarded-proto") || "https";
+  if (host) return `${proto}://${host}`;
+  return new URL(request.url).origin;
+}
+
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
+  const baseUrl = getBaseUrl(request);
 
   const cookieStore = await cookies();
   const storedState = cookieStore.get("kick_oauth_state")?.value;
   const codeVerifier = cookieStore.get("kick_code_verifier")?.value;
 
   if (!code || !state || !storedState || !codeVerifier || state !== storedState) {
-    return NextResponse.redirect(new URL("/?error=invalid_state", request.url));
+    return NextResponse.redirect(new URL("/?error=invalid_state", baseUrl));
   }
 
   try {
@@ -26,7 +35,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!userResponse.ok) {
-      return NextResponse.redirect(new URL("/?error=kick_api_error", request.url));
+      return NextResponse.redirect(new URL("/?error=kick_api_error", baseUrl));
     }
 
     const userData = await userResponse.json();
@@ -79,9 +88,9 @@ export async function GET(request: NextRequest) {
     cookieStore.delete("kick_oauth_state");
     cookieStore.delete("kick_code_verifier");
 
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/dashboard", baseUrl));
   } catch (error) {
     console.error("Kick OAuth callback error:", error);
-    return NextResponse.redirect(new URL("/?error=auth_failed", request.url));
+    return NextResponse.redirect(new URL("/?error=auth_failed", baseUrl));
   }
 }
