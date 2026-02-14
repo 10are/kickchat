@@ -17,6 +17,11 @@ import DramaCreateEntryModal from "@/app/components/DramaCreateEntryModal";
 
 type SortBy = "new" | "top";
 
+interface KickChannelInfo {
+  followersCount: number;
+  isLive: boolean;
+}
+
 export default function ClubDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -29,6 +34,7 @@ export default function ClubDetailPage() {
   const [sortBy, setSortBy] = useState<SortBy>("new");
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [kickInfo, setKickInfo] = useState<KickChannelInfo | null>(null);
 
   // Subscribe to club
   useEffect(() => {
@@ -37,6 +43,21 @@ export default function ClubDetailPage() {
       setLoading(false);
     });
     return () => unsub();
+  }, [clubSlug]);
+
+  // Fetch Kick channel info (live status, followers)
+  useEffect(() => {
+    fetch(`/api/kick/channel?slug=${encodeURIComponent(clubSlug)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.channel) {
+          setKickInfo({
+            followersCount: data.channel.followersCount || 0,
+            isLive: !!data.channel.isLive,
+          });
+        }
+      })
+      .catch(() => {});
   }, [clubSlug]);
 
   // Subscribe to entries
@@ -119,84 +140,138 @@ export default function ClubDetailPage() {
     { key: "top", label: "EN COK BEGENILEN" },
   ];
 
+  const formatCount = (n: number) => {
+    if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+    return n.toString();
+  };
+
   return (
     <div className="flex flex-1 flex-col min-h-0">
-      {/* Header */}
-      <div className="border-b border-border px-6 py-4 shrink-0">
-        <div className="flex items-center gap-3 max-w-3xl mx-auto">
-          {/* Back */}
-          <button
-            onClick={() => router.push("/drama")}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors shrink-0"
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path
-                d="M13 4l-6 6 6 6"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+      {/* Hero Header */}
+      <div className="shrink-0 relative">
+        {/* Background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-kick/8 via-kick/3 to-transparent" />
 
-          {/* Club info */}
-          {club.streamerAvatar ? (
-            <img
-              src={club.streamerAvatar}
-              alt=""
-              className="h-10 w-10 rounded-xl shrink-0"
-            />
-          ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 font-[family-name:var(--font-pixel)] text-sm text-red-400 shrink-0">
-              {club.streamerName[0]?.toUpperCase()}
-            </div>
-          )}
-
-          <div className="flex-1 min-w-0">
-            <h1 className="text-base font-semibold text-foreground truncate">
-              {club.streamerName}
-            </h1>
-            <p className="text-[10px] text-muted-foreground">
-              {club.memberCount} uye · {club.entryCount} entry
-            </p>
+        <div className="relative px-6 pt-4 pb-0">
+          {/* Top bar: back button */}
+          <div className="flex items-center mb-4">
+            <button
+              onClick={() => router.push("/drama")}
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path
+                  d="M13 4l-6 6 6 6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
           </div>
 
-          {/* Create entry */}
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-kick px-3 py-2 font-[family-name:var(--font-pixel)] text-[8px] text-black hover:bg-kick-hover transition-colors active:scale-95 shrink-0"
-          >
-            <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
-              <path
-                d="M10 4v12M4 10h12"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-            </svg>
-            ENTRY AT
-          </button>
-        </div>
-      </div>
+          {/* Profile section */}
+          <div className="flex items-start gap-4 max-w-3xl mx-auto">
+            {/* Avatar */}
+            <div className="relative shrink-0">
+              {club.streamerAvatar ? (
+                <img
+                  src={club.streamerAvatar}
+                  alt=""
+                  className="h-20 w-20 rounded-2xl border-2 border-border shadow-lg object-cover"
+                />
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-border bg-gradient-to-br from-kick/20 to-kick/5 shadow-lg">
+                  <span className="font-[family-name:var(--font-pixel)] text-2xl text-kick">
+                    {club.streamerName[0]?.toUpperCase()}
+                  </span>
+                </div>
+              )}
+              {kickInfo?.isLive && (
+                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 shadow-md">
+                  <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                  <span className="text-[7px] font-bold text-white tracking-wide">CANLI</span>
+                </div>
+              )}
+            </div>
 
-      {/* Sort tabs */}
-      <div className="flex border-b border-border px-6 shrink-0">
-        <div className="max-w-3xl mx-auto flex w-full">
-          {sortTabs.map((t) => (
+            {/* Info */}
+            <div className="flex-1 min-w-0 pt-1">
+              <h1 className="text-lg font-bold text-foreground truncate">
+                {club.streamerName}
+              </h1>
+
+              {/* Stats row */}
+              <div className="flex items-center gap-3 mt-1.5">
+                <div className="flex items-center gap-1">
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" className="text-muted-foreground">
+                    <path d="M14 2H6a2 2 0 00-2 2v14l5-3 5 3V4a2 2 0 00-2-2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className="text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">{club.entryCount}</span> entry
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" className="text-muted-foreground">
+                    <path d="M16 17v-1a4 4 0 00-4-4H8a4 4 0 00-4 4v1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="10" cy="6" r="3" stroke="currentColor" strokeWidth="1.5" />
+                  </svg>
+                  <span className="text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">{club.memberCount}</span> uye
+                  </span>
+                </div>
+                {kickInfo && (
+                  <div className="flex items-center gap-1">
+                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" className="text-muted-foreground">
+                      <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <span className="text-xs text-muted-foreground">
+                      <span className="font-semibold text-foreground">{formatCount(kickInfo.followersCount)}</span> takipci
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Create entry button */}
             <button
-              key={t.key}
-              onClick={() => setSortBy(t.key)}
-              className={`px-4 py-2.5 font-[family-name:var(--font-pixel)] text-[8px] transition-colors border-b-2 ${
-                sortBy === t.key
-                  ? "text-kick border-kick"
-                  : "text-muted-foreground border-transparent hover:text-foreground"
-              }`}
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-1.5 rounded-xl bg-kick px-4 py-2.5 font-[family-name:var(--font-pixel)] text-[9px] text-black hover:bg-kick-hover transition-colors active:scale-95 shrink-0 shadow-md shadow-kick/20"
             >
-              {t.label}
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                <path
+                  d="M10 4v12M4 10h12"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+              ENTRY AT
             </button>
-          ))}
+          </div>
+
+          {/* Sort tabs */}
+          <div className="flex max-w-3xl mx-auto mt-4">
+            {sortTabs.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setSortBy(t.key)}
+                className={`px-4 py-2.5 font-[family-name:var(--font-pixel)] text-[9px] transition-colors border-b-2 ${
+                  sortBy === t.key
+                    ? "text-kick border-kick"
+                    : "text-muted-foreground border-transparent hover:text-foreground"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Bottom border */}
+        <div className="border-b border-border" />
       </div>
 
       {/* Entries */}
