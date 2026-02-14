@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/app/lib/AuthContext";
 import { doc, onSnapshot } from "firebase/firestore";
-import { db, Conversation } from "@/app/lib/firestore";
+import { db, Conversation, subscribeToConversations } from "@/app/lib/firestore";
 import MessageList from "@/app/components/MessageList";
 import MessageInput from "@/app/components/MessageInput";
 
@@ -18,27 +18,41 @@ export default function WatchPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { kickUser } = useAuth();
-  const convId = searchParams.get("conv") || "";
+  const initialConvId = searchParams.get("conv") || "";
 
+  const [activeConvId, setActiveConvId] = useState(initialConvId);
   const [streamUrl, setStreamUrl] = useState("");
   const [embedUrl, setEmbedUrl] = useState("");
   const [inputUrl, setInputUrl] = useState("");
   const [conv, setConv] = useState<Conversation | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [replyTo, setReplyTo] = useState<ReplyTo | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Subscribe to conversation
+  // Subscribe to all conversations (for the picker)
   useEffect(() => {
-    if (!convId || !kickUser) return;
-    const unsub = onSnapshot(doc(db, "conversations", convId), (snap) => {
+    if (!kickUser?.uid) return;
+    const unsub = subscribeToConversations(kickUser.uid, setConversations);
+    return () => unsub();
+  }, [kickUser?.uid]);
+
+  // Subscribe to active conversation
+  useEffect(() => {
+    if (!activeConvId || !kickUser) return;
+    const unsub = onSnapshot(doc(db, "conversations", activeConvId), (snap) => {
       if (snap.exists()) {
         setConv({ id: snap.id, ...snap.data() } as Conversation);
       }
     });
     return () => unsub();
-  }, [convId, kickUser]);
+  }, [activeConvId, kickUser]);
+
+  // Reset reply when switching conversations
+  useEffect(() => {
+    setReplyTo(null);
+  }, [activeConvId]);
 
   // Parse stream URL to embed
   const parseStreamUrl = (url: string) => {
@@ -107,12 +121,17 @@ export default function WatchPage() {
   const otherId = conv?.participants.find((p) => p !== kickUser?.uid);
   const otherUsername = otherId ? conv?.participantUsernames?.[otherId] || "?" : "?";
 
+  const selectConversation = (id: string) => {
+    setActiveConvId(id);
+    setConv(null);
+  };
+
   return (
     <div ref={containerRef} className="flex flex-1 flex-col min-h-0 bg-background">
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-border px-4 py-2.5 shrink-0 bg-surface">
         <button
-          onClick={() => router.push(convId ? `/chat/${convId}` : "/chat")}
+          onClick={() => router.push(activeConvId ? `/chat/${activeConvId}` : "/chat")}
           className="rounded-lg p-1.5 text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors"
         >
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
@@ -154,13 +173,9 @@ export default function WatchPage() {
             >
               <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
                 {isFullscreen ? (
-                  <>
-                    <path d="M4 12h4v4M16 8h-4V4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </>
+                  <path d="M4 12h4v4M16 8h-4V4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 ) : (
-                  <>
-                    <path d="M4 8V4h4M16 12v4h-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </>
+                  <path d="M4 8V4h4M16 12v4h-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 )}
               </svg>
             </button>
@@ -234,38 +249,117 @@ export default function WatchPage() {
           )}
         </div>
 
-        {/* Chat panel (right side) */}
-        {conv && !chatCollapsed && (
+        {/* Right panel - Chat or Conversation picker */}
+        {!chatCollapsed && (
           <div className="flex w-80 shrink-0 flex-col border-l border-border bg-surface">
-            {/* Chat header mini */}
-            <div className="flex items-center gap-2 border-b border-border px-3 py-2 shrink-0">
-              <span className="font-[family-name:var(--font-pixel)] text-[8px] text-kick flex-1">
-                SOHBET
-              </span>
-              <span className="text-[10px] text-muted-foreground truncate">
-                {otherUsername}
-              </span>
-            </div>
+            {activeConvId && conv ? (
+              <>
+                {/* Chat header mini */}
+                <div className="flex items-center gap-2 border-b border-border px-3 py-2 shrink-0">
+                  <button
+                    onClick={() => { setActiveConvId(""); setConv(null); }}
+                    className="rounded p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                      <path d="M12 4l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  <span className="font-[family-name:var(--font-pixel)] text-[8px] text-kick flex-1">
+                    SOHBET
+                  </span>
+                  <span className="text-[10px] text-muted-foreground truncate">
+                    {otherUsername}
+                  </span>
+                </div>
 
-            {/* Messages */}
-            <MessageList
-              conversationId={convId}
-              participantUsernames={conv.participantUsernames || {}}
-              participantAvatars={conv.participantAvatars || {}}
-              onReply={setReplyTo}
-            />
+                {/* Messages */}
+                <MessageList
+                  conversationId={activeConvId}
+                  participantUsernames={conv.participantUsernames || {}}
+                  participantAvatars={conv.participantAvatars || {}}
+                  onReply={setReplyTo}
+                />
 
-            {/* Input */}
-            <MessageInput
-              conversationId={convId}
-              replyTo={replyTo}
-              onCancelReply={() => setReplyTo(null)}
-            />
+                {/* Input */}
+                <MessageInput
+                  conversationId={activeConvId}
+                  replyTo={replyTo}
+                  onCancelReply={() => setReplyTo(null)}
+                />
+              </>
+            ) : (
+              <>
+                {/* Conversation list header */}
+                <div className="flex items-center gap-2 border-b border-border px-3 py-2 shrink-0">
+                  <span className="font-[family-name:var(--font-pixel)] text-[8px] text-kick flex-1">
+                    SOHBET SEC
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {conversations.length} sohbet
+                  </span>
+                </div>
+
+                {/* Conversation list */}
+                <div className="flex-1 overflow-y-auto">
+                  {conversations.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-3 p-4">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-muted-foreground opacity-40">
+                        <path d="M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-3.68-.71L3 21l1.87-3.75C3.69 15.73 3 14 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="currentColor" strokeWidth="2" />
+                      </svg>
+                      <p className="text-xs text-muted-foreground text-center">Henuz sohbet yok</p>
+                      <button
+                        onClick={() => router.push("/chat")}
+                        className="rounded-lg bg-kick/10 px-3 py-1.5 font-[family-name:var(--font-pixel)] text-[8px] text-kick hover:bg-kick/20 transition-colors"
+                      >
+                        SOHBET BASLAT
+                      </button>
+                    </div>
+                  ) : (
+                    conversations.map((c) => {
+                      const cOtherId = c.participants.find((p) => p !== kickUser?.uid);
+                      const cUsername = cOtherId ? c.participantUsernames?.[cOtherId] || "?" : "?";
+                      const cAvatar = cOtherId ? c.participantAvatars?.[cOtherId] || null : null;
+                      const lastMsg = c.lastMessage || "";
+                      const lastTime = c.lastMessageAt?.toDate?.();
+
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => selectConversation(c.id)}
+                          className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-surface-hover border-b border-border/50"
+                        >
+                          {cAvatar ? (
+                            <img src={cAvatar} alt="" className="h-8 w-8 rounded-full shrink-0" />
+                          ) : (
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-bold text-foreground shrink-0">
+                              {cUsername[0]?.toUpperCase()}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-foreground truncate">{cUsername}</span>
+                              {lastTime && (
+                                <span className="text-[10px] text-muted-foreground shrink-0 ml-2">
+                                  {formatTime(lastTime)}
+                                </span>
+                              )}
+                            </div>
+                            {lastMsg && (
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">{lastMsg}</p>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
 
         {/* Chat collapsed indicator */}
-        {conv && chatCollapsed && embedUrl && (
+        {chatCollapsed && embedUrl && (
           <button
             onClick={() => setChatCollapsed(false)}
             className="absolute bottom-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-xl bg-kick text-black shadow-lg hover:bg-kick-hover transition-colors"
@@ -277,21 +371,17 @@ export default function WatchPage() {
           </button>
         )}
       </div>
-
-      {/* No conversation selected */}
-      {!conv && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20">
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-3">Önce bir sohbet seçmelisin</p>
-            <button
-              onClick={() => router.push("/chat")}
-              className="rounded-lg bg-kick px-4 py-2 text-sm font-medium text-black hover:bg-kick-hover transition-colors"
-            >
-              Sohbetlere Git
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
+}
+
+function formatTime(date: Date): string {
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "az once";
+  if (mins < 60) return `${mins}dk`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}sa`;
+  return date.toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 }

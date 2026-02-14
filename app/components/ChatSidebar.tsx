@@ -30,6 +30,7 @@ export default function ChatSidebar() {
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [tab, setTab] = useState<Tab>("chats");
   const [showSearch, setShowSearch] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const router = useRouter();
   const params = useParams();
   const activeId = params?.conversationId as string | undefined;
@@ -206,15 +207,32 @@ export default function ChatSidebar() {
                 <span className="flex-1 text-sm font-medium text-foreground truncate">
                   {friend.username}
                 </span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); kickUser && removeFriend(kickUser.uid, friend.oderId); }}
-                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-active hover:text-red-400"
-                  title="Arkadaşlıktan çıkar"
-                >
-                  <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-                    <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </button>
+                {confirmRemove === friend.id ? (
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => { kickUser && removeFriend(kickUser.uid, friend.oderId); setConfirmRemove(null); }}
+                      className="rounded-lg bg-red-500 px-2 py-1 text-[10px] font-medium text-white hover:bg-red-600 transition-colors"
+                    >
+                      Evet
+                    </button>
+                    <button
+                      onClick={() => setConfirmRemove(null)}
+                      className="rounded-lg border border-border px-2 py-1 text-[10px] text-muted-foreground hover:bg-surface-hover transition-colors"
+                    >
+                      Hayır
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setConfirmRemove(friend.id); }}
+                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-active hover:text-red-400"
+                    title="Arkadaşlıktan çıkar"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                      <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                )}
               </div>
             ))}
           </>
