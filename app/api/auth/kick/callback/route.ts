@@ -21,6 +21,21 @@ export async function GET(request: NextRequest) {
   const storedState = request.cookies.get("kick_oauth_state")?.value;
   const codeVerifier = request.cookies.get("kick_code_verifier")?.value;
 
+  // Debug: log all cookies and state info
+  const allCookies = request.cookies.getAll().map((c) => c.name);
+  console.log("[OAuth Callback Debug]", {
+    hasCode: !!code,
+    state,
+    storedState,
+    hasCodeVerifier: !!codeVerifier,
+    stateMatch: state === storedState,
+    allCookieNames: allCookies,
+    requestUrl: request.url,
+    host: request.headers.get("host"),
+    xForwardedHost: request.headers.get("x-forwarded-host"),
+    baseUrl,
+  });
+
   if (
     !code ||
     !state ||
