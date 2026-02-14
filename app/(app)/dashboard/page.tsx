@@ -55,8 +55,8 @@ export default function DashboardPage() {
     },
     {
       key: "drama",
-      title: "Drama",
-      description: "Guncel dramalar ve tartismalar",
+      title: "Kulup",
+      description: "Yayincilar hakkinda tartis, entry at",
       href: "/drama",
       gradient: "from-red-500/20 to-red-600/5",
       iconBg: "bg-red-500/15 text-red-400 group-hover:bg-red-500 group-hover:text-white",

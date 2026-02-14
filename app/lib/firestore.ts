@@ -49,6 +49,10 @@ export interface Conversation {
   lastMessage: string;
   lastMessageAt: Timestamp | null;
   lastMessageSenderId?: string;
+  // Group-specific fields
+  isGroup?: boolean;
+  groupName?: string;
+  adminId?: string;
 }
 
 export interface UserProfile {
@@ -208,7 +212,7 @@ export async function getOrCreateConversation(
 
   for (const docSnap of snapshot.docs) {
     const data = docSnap.data();
-    if (data.participants.includes(userId2)) {
+    if (data.participants.includes(userId2) && !data.isGroup && data.participants.length === 2) {
       return docSnap.id;
     }
   }
@@ -321,6 +325,155 @@ export async function loadOlderMessages(
     id: d.id,
     ...d.data(),
   })) as ChatMessage[];
+}
+
+// ── Group Conversations ──
+
+export async function createGroupConversation(
+  creator: { uid: string; username: string; avatar: string | null },
+  members: { uid: string; username: string; avatar: string | null }[],
+  groupName: string
+): Promise<string> {
+  const allMembers = [creator, ...members];
+  if (allMembers.length < 2 || allMembers.length > 5) {
+    throw new Error("Grup en az 2, en fazla 5 kisi olabilir");
+  }
+
+  const participants = allMembers.map((m) => m.uid);
+  const participantUsernames: Record<string, string> = {};
+  const participantAvatars: Record<string, string | null> = {};
+
+  for (const m of allMembers) {
+    participantUsernames[m.uid] = m.username;
+    participantAvatars[m.uid] = m.avatar;
+  }
+
+  const convsRef = collection(db, "conversations");
+  const newConv = await addDoc(convsRef, {
+    participants,
+    participantUsernames,
+    participantAvatars,
+    lastMessage: "",
+    lastMessageAt: serverTimestamp(),
+    isGroup: true,
+    groupName: groupName.trim().slice(0, 50),
+    adminId: creator.uid,
+  });
+
+  return newConv.id;
+}
+
+export async function addGroupMember(
+  conversationId: string,
+  adminId: string,
+  newMember: { uid: string; username: string; avatar: string | null }
+): Promise<void> {
+  const convRef = doc(db, "conversations", conversationId);
+
+  await runTransaction(db, async (transaction) => {
+    const convDoc = await transaction.get(convRef);
+    if (!convDoc.exists()) throw new Error("Grup bulunamadi");
+
+    const data = convDoc.data();
+    if (data.adminId !== adminId) throw new Error("Yetkiniz yok");
+    if (!data.isGroup) throw new Error("Bu bir grup degil");
+    if (data.participants.length >= 5) throw new Error("Grup dolu (maks 5 kisi)");
+    if (data.participants.includes(newMember.uid))
+      throw new Error("Kullanici zaten grupta");
+
+    transaction.update(convRef, {
+      participants: [...data.participants, newMember.uid],
+      [`participantUsernames.${newMember.uid}`]: newMember.username,
+      [`participantAvatars.${newMember.uid}`]: newMember.avatar,
+    });
+  });
+}
+
+export async function removeGroupMember(
+  conversationId: string,
+  adminId: string,
+  memberId: string
+): Promise<void> {
+  if (adminId === memberId) throw new Error("Admin kendini cikaramaz");
+
+  const convRef = doc(db, "conversations", conversationId);
+
+  await runTransaction(db, async (transaction) => {
+    const convDoc = await transaction.get(convRef);
+    if (!convDoc.exists()) throw new Error("Grup bulunamadi");
+
+    const data = convDoc.data();
+    if (data.adminId !== adminId) throw new Error("Yetkiniz yok");
+    if (!data.participants.includes(memberId))
+      throw new Error("Kullanici grupta degil");
+
+    const newParticipants = data.participants.filter(
+      (p: string) => p !== memberId
+    );
+    const newUsernames = { ...data.participantUsernames };
+    const newAvatars = { ...data.participantAvatars };
+    delete newUsernames[memberId];
+    delete newAvatars[memberId];
+
+    transaction.update(convRef, {
+      participants: newParticipants,
+      participantUsernames: newUsernames,
+      participantAvatars: newAvatars,
+    });
+  });
+}
+
+export async function leaveGroup(
+  conversationId: string,
+  userId: string
+): Promise<void> {
+  const convRef = doc(db, "conversations", conversationId);
+
+  await runTransaction(db, async (transaction) => {
+    const convDoc = await transaction.get(convRef);
+    if (!convDoc.exists()) throw new Error("Grup bulunamadi");
+
+    const data = convDoc.data();
+    if (!data.participants.includes(userId))
+      throw new Error("Grupta degilsiniz");
+
+    const newParticipants = data.participants.filter(
+      (p: string) => p !== userId
+    );
+
+    const newUsernames = { ...data.participantUsernames };
+    const newAvatars = { ...data.participantAvatars };
+    delete newUsernames[userId];
+    delete newAvatars[userId];
+
+    const updates: Record<string, unknown> = {
+      participants: newParticipants,
+      participantUsernames: newUsernames,
+      participantAvatars: newAvatars,
+    };
+
+    // Transfer admin if the leaving user is admin
+    if (data.adminId === userId && newParticipants.length > 0) {
+      updates.adminId = newParticipants[0];
+    }
+
+    transaction.update(convRef, updates);
+  });
+}
+
+export async function updateGroupName(
+  conversationId: string,
+  adminId: string,
+  newName: string
+): Promise<void> {
+  const convRef = doc(db, "conversations", conversationId);
+  const convDoc = await getDoc(convRef);
+  if (!convDoc.exists()) throw new Error("Grup bulunamadi");
+  if (convDoc.data().adminId !== adminId) throw new Error("Yetkiniz yok");
+
+  await updateDoc(convRef, {
+    groupName: newName.trim().slice(0, 50),
+  });
 }
 
 // ── Users ──

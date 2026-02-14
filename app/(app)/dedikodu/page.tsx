@@ -26,7 +26,7 @@ export default function DedikodPage() {
           DEDİKODU
         </h1>
         <p className="mt-3 text-sm text-muted-foreground max-w-sm">
-          Kick dünyasından dedikodular ve haberler burada olacak.
+          Kick dünyasından dedikodular ve haberler burada olacak. Yakında!
         </p>
         <div className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2">
           <div className="flex gap-1">

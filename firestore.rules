@@ -32,12 +32,22 @@ service cloud.firestore {
       // Only participants can read the conversation
       allow read: if request.auth != null
                   && request.auth.uid in resource.data.participants;
-      // Only participants can update the conversation (e.g. lastMessage)
+      // Participants can update; for groups, only admin can change participants
       allow update: if request.auth != null
-                    && request.auth.uid in resource.data.participants;
-      // Authenticated users can create conversations (they must be a participant)
+                    && request.auth.uid in resource.data.participants
+                    && (
+                      // Non-group or no participant change: any participant can update
+                      (!resource.data.get('isGroup', false)
+                        || request.resource.data.participants == resource.data.participants)
+                      // Group participant change: must be admin or leaving (removing self)
+                      || request.auth.uid == resource.data.adminId
+                      || (request.resource.data.participants.size() == resource.data.participants.size() - 1
+                          && !(request.auth.uid in request.resource.data.participants))
+                    );
+      // Authenticated users can create conversations (they must be a participant, max 5)
       allow create: if request.auth != null
-                    && request.auth.uid in request.resource.data.participants;
+                    && request.auth.uid in request.resource.data.participants
+                    && request.resource.data.participants.size() <= 5;
 
       // Messages subcollection
       match /messages/{messageId} {

@@ -122,8 +122,11 @@ export default function WatchPage() {
     return () => document.removeEventListener("fullscreenchange", handleChange);
   }, []);
 
-  const otherId = conv?.participants.find((p) => p !== kickUser?.uid);
-  const otherUsername = otherId ? conv?.participantUsernames?.[otherId] || "?" : "?";
+  const isGroupConv = conv?.isGroup === true;
+  const otherId = !isGroupConv ? conv?.participants.find((p) => p !== kickUser?.uid) : undefined;
+  const otherUsername = isGroupConv
+    ? (conv?.groupName || "Grup")
+    : (otherId ? conv?.participantUsernames?.[otherId] || "?" : "?");
 
   const selectConversation = (id: string) => {
     setActiveConvId(id);
@@ -400,9 +403,12 @@ export default function WatchPage() {
                     </div>
                   ) : (
                     conversations.map((c) => {
-                      const cOtherId = c.participants.find((p) => p !== kickUser?.uid);
-                      const cUsername = cOtherId ? c.participantUsernames?.[cOtherId] || "?" : "?";
-                      const cAvatar = cOtherId ? c.participantAvatars?.[cOtherId] || null : null;
+                      const cIsGroup = c.isGroup === true;
+                      const cOtherId = !cIsGroup ? c.participants.find((p) => p !== kickUser?.uid) : undefined;
+                      const cUsername = cIsGroup
+                        ? (c.groupName || "Grup")
+                        : (cOtherId ? c.participantUsernames?.[cOtherId] || "?" : "?");
+                      const cAvatar = !cIsGroup && cOtherId ? c.participantAvatars?.[cOtherId] || null : null;
                       const lastMsg = c.lastMessage || "";
                       const lastTime = c.lastMessageAt?.toDate?.();
 
@@ -412,7 +418,13 @@ export default function WatchPage() {
                           onClick={() => selectConversation(c.id)}
                           className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-surface-hover border-b border-border/50"
                         >
-                          {cAvatar ? (
+                          {cIsGroup ? (
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-kick/10 shrink-0">
+                              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="text-kick">
+                                <path d="M7 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM13 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM4 17c0-2.21 1.79-3 3-3h2c1.21 0 3 .79 3 3M11 17c0-2.21 1.79-3 3-3h2c1.21 0 3 .79 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                              </svg>
+                            </div>
+                          ) : cAvatar ? (
                             <img src={cAvatar} alt="" className="h-8 w-8 rounded-full shrink-0" />
                           ) : (
                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-bold text-foreground shrink-0">

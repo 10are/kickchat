@@ -111,7 +111,7 @@ export default function DramaPage() {
       <div className="flex items-center gap-3 border-b border-border px-6 py-4 shrink-0">
         <div className="flex-1">
           <h1 className="font-[family-name:var(--font-pixel)] text-sm text-red-400">
-            DRAMA
+            KULUP
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             Yayincilar hakkinda tartis, entry at, oy ver

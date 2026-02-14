@@ -7,6 +7,7 @@ import { doc, onSnapshot, collection, query, where, getDocs } from "firebase/fir
 import { db, Conversation, blockUser, sendFriendRequest } from "@/app/lib/firestore";
 import MessageList from "@/app/components/MessageList";
 import MessageInput from "@/app/components/MessageInput";
+import GroupInfoPanel from "@/app/components/GroupInfoPanel";
 
 export interface ReplyTo {
   id: string;
@@ -25,9 +26,12 @@ export default function ConversationPage() {
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
   const [friendStatus, setFriendStatus] = useState<"none" | "pending" | "friends">("none");
   const [friendLoading, setFriendLoading] = useState(false);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
 
-  // Derived values
-  const otherId = conv?.participants.find((p) => p !== kickUser?.uid);
+  const isGroup = conv?.isGroup === true;
+
+  // Derived values for 1:1
+  const otherId = !isGroup ? conv?.participants.find((p) => p !== kickUser?.uid) : undefined;
   const otherUsername = otherId ? conv?.participantUsernames?.[otherId] || "?" : "?";
   const otherAvatar = otherId ? conv?.participantAvatars?.[otherId] || null : null;
 
@@ -37,7 +41,6 @@ export default function ConversationPage() {
         const data = snap.data();
         const participants: string[] = data.participants || [];
 
-        // Security check: only allow participants to view the conversation
         if (kickUser?.uid && !participants.includes(kickUser.uid)) {
           setUnauthorized(true);
           return;
@@ -50,9 +53,9 @@ export default function ConversationPage() {
     return () => unsub();
   }, [conversationId, kickUser?.uid]);
 
-  // Check friendship status
+  // Check friendship status (only for 1:1)
   useEffect(() => {
-    if (!kickUser?.uid || !otherId) return;
+    if (!kickUser?.uid || !otherId || isGroup) return;
 
     const friendDoc = doc(db, "users", kickUser.uid, "friends", otherId);
     const unsubFriend = onSnapshot(friendDoc, async (snap) => {
@@ -60,7 +63,6 @@ export default function ConversationPage() {
         setFriendStatus("friends");
         return;
       }
-      // Check pending requests (both directions)
       const q1 = query(
         collection(db, "friendRequests"),
         where("fromId", "==", kickUser.uid),
@@ -75,7 +77,7 @@ export default function ConversationPage() {
       setFriendStatus(!r1.empty || !r2.empty ? "pending" : "none");
     });
     return () => unsubFriend();
-  }, [kickUser?.uid, otherId]);
+  }, [kickUser?.uid, otherId, isGroup]);
 
   const handleAddFriend = async () => {
     if (!kickUser || !otherId || friendStatus !== "none") return;
@@ -102,18 +104,17 @@ export default function ConversationPage() {
     router.push("/chat");
   };
 
-  // Redirect unauthorized users
   if (unauthorized) {
     return (
       <div className="flex flex-1 items-center justify-center">
         <div className="text-center">
-          <p className="text-lg font-semibold text-foreground mb-2">Erişim Engellendi</p>
-          <p className="text-sm text-muted-foreground mb-4">Bu sohbete erişim yetkiniz yok.</p>
+          <p className="text-lg font-semibold text-foreground mb-2">Erisim Engellendi</p>
+          <p className="text-sm text-muted-foreground mb-4">Bu sohbete erisim yetkiniz yok.</p>
           <button
             onClick={() => router.push("/chat")}
             className="rounded-lg bg-kick px-4 py-2 text-sm font-medium text-black hover:bg-kick-hover transition-colors"
           >
-            Sohbetlere Dön
+            Sohbetlere Don
           </button>
         </div>
       </div>
@@ -123,111 +124,172 @@ export default function ConversationPage() {
   return (
     <div className="flex flex-1 flex-col min-h-0">
       {/* Chat Header */}
-      <div className="flex items-center gap-2 border-b border-border bg-surface px-4 py-2.5 shrink-0">
-        {otherAvatar ? (
-          <img src={otherAvatar} alt="" className="h-8 w-8 rounded-full" />
-        ) : (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-bold text-foreground">
-            {otherUsername[0]?.toUpperCase()}
+      {isGroup ? (
+        /* ── GROUP HEADER ── */
+        <div className="flex items-center gap-2 border-b border-border bg-surface px-4 py-2.5 shrink-0">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-kick/10 text-kick">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <path d="M14 15v-1a3 3 0 00-3-3H7a3 3 0 00-3 3v1M9 8a3 3 0 100-6 3 3 0 000 6zM17 15v-1a3 3 0 00-2-2.83M14 3.17a3 3 0 010 5.66" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
           </div>
-        )}
-        <span className="font-medium text-foreground text-sm">{otherUsername}</span>
+          <div className="min-w-0">
+            <span className="font-medium text-foreground text-sm truncate block">
+              {conv?.groupName || "Grup"}
+            </span>
+            <p className="text-[10px] text-muted-foreground">
+              {conv?.participants.length} uye
+            </p>
+          </div>
 
-        {/* Action buttons - left aligned */}
-        <button
-          onClick={() => {
-            window.open(
-              `/popup/${conversationId}`,
-              `kickchat-${conversationId}`,
-              "width=380,height=520,resizable=yes,scrollbars=no"
-            );
-          }}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
-        >
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-            <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
-            <path d="M8 3v4H4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span className="font-[family-name:var(--font-pixel)] text-[7px]">POPUP</span>
-        </button>
-
-        <button
-          onClick={() => router.push(`/watch?conv=${conversationId}`)}
-          className="flex items-center gap-1.5 rounded-lg border border-kick/30 bg-kick/10 px-2.5 py-1.5 text-kick transition-colors hover:bg-kick/20"
-        >
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-            <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="2" />
-            <path d="M8 8l4 2.5-4 2.5V8z" fill="currentColor" />
-          </svg>
-          <span className="font-[family-name:var(--font-pixel)] text-[7px]">YAYIN IZLE</span>
-        </button>
-
-        <div className="flex-1" />
-
-        {/* Friend status / Add friend button */}
-        {friendStatus === "friends" ? (
-          <span className="flex items-center gap-1 rounded-lg bg-kick/10 px-2 py-1">
-            <svg width="12" height="12" viewBox="0 0 20 20" fill="none" className="text-kick">
-              <path d="M5 10l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="font-[family-name:var(--font-pixel)] text-[7px] text-kick">ARKADAS</span>
-          </span>
-        ) : friendStatus === "pending" ? (
-          <span className="flex items-center gap-1 rounded-lg bg-yellow-500/10 px-2 py-1">
-            <svg width="12" height="12" viewBox="0 0 20 20" fill="none" className="text-yellow-500">
-              <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="2" />
-              <path d="M10 6v4l2 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-            <span className="font-[family-name:var(--font-pixel)] text-[7px] text-yellow-500">ISTEK GONDERILDI</span>
-          </span>
-        ) : (
+          {/* Popup */}
           <button
-            onClick={handleAddFriend}
-            disabled={friendLoading}
-            className="flex items-center gap-1 rounded-lg bg-kick/10 px-2 py-1 transition-colors hover:bg-kick/20 disabled:opacity-50"
+            onClick={() => {
+              window.open(
+                `/popup/${conversationId}`,
+                `kickchat-${conversationId}`,
+                "width=380,height=520,resizable=yes,scrollbars=no"
+              );
+            }}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
+          >
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+              <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
+              <path d="M8 3v4H4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="font-[family-name:var(--font-pixel)] text-[7px]">POPUP</span>
+          </button>
+
+          {/* Watch */}
+          <button
+            onClick={() => router.push(`/watch?conv=${conversationId}`)}
+            className="flex items-center gap-1.5 rounded-lg border border-kick/30 bg-kick/10 px-2.5 py-1.5 text-kick transition-colors hover:bg-kick/20"
+          >
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+              <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="2" />
+              <path d="M8 8l4 2.5-4 2.5V8z" fill="currentColor" />
+            </svg>
+            <span className="font-[family-name:var(--font-pixel)] text-[7px]">YAYIN IZLE</span>
+          </button>
+
+          <div className="flex-1" />
+
+          {/* Group Info */}
+          <button
+            onClick={() => setShowGroupInfo(true)}
+            className="flex items-center gap-1 rounded-lg bg-kick/10 px-2 py-1 transition-colors hover:bg-kick/20"
           >
             <svg width="12" height="12" viewBox="0 0 20 20" fill="none" className="text-kick">
-              <path d="M12 13a4 4 0 00-8 0M8 9a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              <path d="M15 6v4M17 8h-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M10 9v4M10 7h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
-            <span className="font-[family-name:var(--font-pixel)] text-[7px] text-kick">
-              {friendLoading ? "..." : "ARKADAS EKLE"}
-            </span>
+            <span className="font-[family-name:var(--font-pixel)] text-[7px] text-kick">GRUP BILGI</span>
           </button>
-        )}
-
-        {/* Block button */}
-        <div className="relative">
-          {showBlockConfirm ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Engellensin mi?</span>
-              <button
-                onClick={handleBlock}
-                className="rounded-lg bg-red-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-600 transition-colors"
-              >
-                Evet
-              </button>
-              <button
-                onClick={() => setShowBlockConfirm(false)}
-                className="rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-surface-hover transition-colors"
-              >
-                İptal
-              </button>
+        </div>
+      ) : (
+        /* ── 1:1 HEADER ── */
+        <div className="flex items-center gap-2 border-b border-border bg-surface px-4 py-2.5 shrink-0">
+          {otherAvatar ? (
+            <img src={otherAvatar} alt="" className="h-8 w-8 rounded-full" />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-bold text-foreground">
+              {otherUsername[0]?.toUpperCase()}
             </div>
+          )}
+          <span className="font-medium text-foreground text-sm">{otherUsername}</span>
+
+          <button
+            onClick={() => {
+              window.open(
+                `/popup/${conversationId}`,
+                `kickchat-${conversationId}`,
+                "width=380,height=520,resizable=yes,scrollbars=no"
+              );
+            }}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
+          >
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+              <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
+              <path d="M8 3v4H4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="font-[family-name:var(--font-pixel)] text-[7px]">POPUP</span>
+          </button>
+
+          <button
+            onClick={() => router.push(`/watch?conv=${conversationId}`)}
+            className="flex items-center gap-1.5 rounded-lg border border-kick/30 bg-kick/10 px-2.5 py-1.5 text-kick transition-colors hover:bg-kick/20"
+          >
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+              <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="2" />
+              <path d="M8 8l4 2.5-4 2.5V8z" fill="currentColor" />
+            </svg>
+            <span className="font-[family-name:var(--font-pixel)] text-[7px]">YAYIN IZLE</span>
+          </button>
+
+          <div className="flex-1" />
+
+          {friendStatus === "friends" ? (
+            <span className="flex items-center gap-1 rounded-lg bg-kick/10 px-2 py-1">
+              <svg width="12" height="12" viewBox="0 0 20 20" fill="none" className="text-kick">
+                <path d="M5 10l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="font-[family-name:var(--font-pixel)] text-[7px] text-kick">ARKADAS</span>
+            </span>
+          ) : friendStatus === "pending" ? (
+            <span className="flex items-center gap-1 rounded-lg bg-yellow-500/10 px-2 py-1">
+              <svg width="12" height="12" viewBox="0 0 20 20" fill="none" className="text-yellow-500">
+                <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="2" />
+                <path d="M10 6v4l2 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              <span className="font-[family-name:var(--font-pixel)] text-[7px] text-yellow-500">ISTEK GONDERILDI</span>
+            </span>
           ) : (
             <button
-              onClick={() => setShowBlockConfirm(true)}
-              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-red-400"
-              title="Engelle"
+              onClick={handleAddFriend}
+              disabled={friendLoading}
+              className="flex items-center gap-1 rounded-lg bg-kick/10 px-2 py-1 transition-colors hover:bg-kick/20 disabled:opacity-50"
             >
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="2" />
-                <path d="M5 5l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <svg width="12" height="12" viewBox="0 0 20 20" fill="none" className="text-kick">
+                <path d="M12 13a4 4 0 00-8 0M8 9a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M15 6v4M17 8h-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
+              <span className="font-[family-name:var(--font-pixel)] text-[7px] text-kick">
+                {friendLoading ? "..." : "ARKADAS EKLE"}
+              </span>
             </button>
           )}
+
+          <div className="relative">
+            {showBlockConfirm ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Engellensin mi?</span>
+                <button
+                  onClick={handleBlock}
+                  className="rounded-lg bg-red-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-600 transition-colors"
+                >
+                  Evet
+                </button>
+                <button
+                  onClick={() => setShowBlockConfirm(false)}
+                  className="rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-surface-hover transition-colors"
+                >
+                  Iptal
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowBlockConfirm(true)}
+                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-red-400"
+                title="Engelle"
+              >
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                  <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="2" />
+                  <path d="M5 5l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Messages */}
       <MessageList
@@ -243,6 +305,14 @@ export default function ConversationPage() {
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
       />
+
+      {/* Group Info Panel */}
+      {showGroupInfo && conv && isGroup && (
+        <GroupInfoPanel
+          conversation={conv}
+          onClose={() => setShowGroupInfo(false)}
+        />
+      )}
     </div>
   );
 }

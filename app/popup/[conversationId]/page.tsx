@@ -38,9 +38,13 @@ export default function PopupChatPage() {
   // Set window title
   useEffect(() => {
     if (!conv || !kickUser) return;
-    const otherId = conv.participants.find((p) => p !== kickUser.uid);
-    const otherName = otherId ? conv.participantUsernames?.[otherId] || "Chat" : "Chat";
-    document.title = `${otherName} - KickSocially`;
+    const name = conv.isGroup
+      ? (conv.groupName || "Grup")
+      : (() => {
+          const otherId = conv.participants.find((p) => p !== kickUser.uid);
+          return otherId ? conv.participantUsernames?.[otherId] || "Chat" : "Chat";
+        })();
+    document.title = `${name} - KickSocially`;
   }, [conv, kickUser]);
 
   if (loading) {
@@ -83,15 +87,24 @@ export default function PopupChatPage() {
     );
   }
 
-  const otherId = conv.participants.find((p) => p !== kickUser.uid);
-  const otherUsername = otherId ? conv.participantUsernames?.[otherId] || "?" : "?";
-  const otherAvatar = otherId ? conv.participantAvatars?.[otherId] || null : null;
+  const isGroup = conv.isGroup === true;
+  const otherId = !isGroup ? conv.participants.find((p) => p !== kickUser.uid) : undefined;
+  const otherUsername = isGroup
+    ? (conv.groupName || "Grup")
+    : (otherId ? conv.participantUsernames?.[otherId] || "?" : "?");
+  const otherAvatar = !isGroup && otherId ? conv.participantAvatars?.[otherId] || null : null;
 
   return (
     <div className="flex h-screen flex-col bg-background">
       {/* Mini header - draggable area */}
       <div className="flex items-center gap-2 border-b border-border bg-surface px-3 py-2 shrink-0">
-        {otherAvatar ? (
+        {isGroup ? (
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-kick/10">
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="none" className="text-kick">
+              <path d="M7 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM13 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM4 17c0-2.21 1.79-3 3-3h2c1.21 0 3 .79 3 3M11 17c0-2.21 1.79-3 3-3h2c1.21 0 3 .79 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </div>
+        ) : otherAvatar ? (
           <img src={otherAvatar} alt="" className="h-6 w-6 rounded-full" />
         ) : (
           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted font-[family-name:var(--font-pixel)] text-[7px] text-foreground">
@@ -101,6 +114,11 @@ export default function PopupChatPage() {
         <span className="flex-1 font-[family-name:var(--font-pixel)] text-[9px] text-foreground truncate">
           {otherUsername}
         </span>
+        {isGroup && (
+          <span className="text-[8px] text-muted-foreground shrink-0">
+            {conv.participants.length} kisi
+          </span>
+        )}
         <img src="/favicon.svg" alt="" className="h-5 w-5 shrink-0" />
       </div>
 

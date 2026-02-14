@@ -19,6 +19,7 @@ import {
 } from "@/app/lib/firestore";
 import { useRouter, useParams } from "next/navigation";
 import UserSearch from "./UserSearch";
+import CreateGroupModal from "./CreateGroupModal";
 
 type Tab = "chats" | "friends" | "requests" | "blocked";
 
@@ -30,6 +31,7 @@ export default function ChatSidebar() {
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [tab, setTab] = useState<Tab>("chats");
   const [showSearch, setShowSearch] = useState(false);
+  const [showGroupModal, setShowGroupModal] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const router = useRouter();
   const params = useParams();
@@ -88,6 +90,9 @@ export default function ChatSidebar() {
       {/* User Search Overlay */}
       {showSearch && <UserSearch onClose={() => setShowSearch(false)} />}
 
+      {/* Group Creation Modal */}
+      {showGroupModal && <CreateGroupModal onClose={() => setShowGroupModal(false)} conversations={conversations} friends={friends} />}
+
       {/* Tabs */}
       <div className="flex border-b border-border">
         {tabs.map((t) => (
@@ -118,20 +123,35 @@ export default function ChatSidebar() {
         {/* Chats Tab */}
         {tab === "chats" && (
           <>
-            {/* New chat button */}
-            <button
-              onClick={() => setShowSearch(true)}
-              className="flex w-full items-center gap-2 border-b border-border px-3 py-2.5 text-left transition-colors hover:bg-surface-hover"
-            >
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-kick/10">
-                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" className="text-kick">
-                  <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </div>
-              <span className="font-[family-name:var(--font-pixel)] text-[8px] text-kick">
-                YENI SOHBET
-              </span>
-            </button>
+            {/* New chat + group buttons */}
+            <div className="flex border-b border-border">
+              <button
+                onClick={() => setShowSearch(true)}
+                className="flex flex-1 items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-surface-hover"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-kick/10">
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" className="text-kick">
+                    <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <span className="font-[family-name:var(--font-pixel)] text-[8px] text-kick">
+                  YENI SOHBET
+                </span>
+              </button>
+              <button
+                onClick={() => setShowGroupModal(true)}
+                className="flex items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-surface-hover border-l border-border"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-kick/10">
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" className="text-kick">
+                    <path d="M14 15v-1a3 3 0 00-3-3H7a3 3 0 00-3 3v1M9 8a3 3 0 100-6 3 3 0 000 6zM17 15v-1a3 3 0 00-2-2.83M14 3.17a3 3 0 010 5.66" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <span className="font-[family-name:var(--font-pixel)] text-[8px] text-kick">
+                  GRUP
+                </span>
+              </button>
+            </div>
 
             {conversations.length === 0 && (
               <EmptyState
@@ -142,8 +162,21 @@ export default function ChatSidebar() {
               />
             )}
             {conversations.map((conv) => {
-              const other = getOtherUser(conv);
+              const isGroup = conv.isGroup === true;
               const isActive = activeId === conv.id;
+
+              let displayName: string;
+              let displayAvatar: string | null;
+
+              if (isGroup) {
+                displayName = conv.groupName || "Grup";
+                displayAvatar = null;
+              } else {
+                const other = getOtherUser(conv);
+                displayName = other.username;
+                displayAvatar = other.avatar;
+              }
+
               return (
                 <button
                   key={conv.id}
@@ -153,18 +186,31 @@ export default function ChatSidebar() {
                   }`}
                 >
                   <div className="relative">
-                    {other.avatar ? (
-                      <img src={other.avatar} alt="" className="h-10 w-10 rounded-lg" />
+                    {isGroup ? (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-kick/10 text-kick">
+                        <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                          <path d="M14 15v-1a3 3 0 00-3-3H7a3 3 0 00-3 3v1M9 8a3 3 0 100-6 3 3 0 000 6zM17 15v-1a3 3 0 00-2-2.83M14 3.17a3 3 0 010 5.66" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                      </div>
+                    ) : displayAvatar ? (
+                      <img src={displayAvatar} alt="" className="h-10 w-10 rounded-lg" />
                     ) : (
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted font-[family-name:var(--font-pixel)] text-xs text-foreground">
-                        {other.username[0]?.toUpperCase()}
+                        {displayName[0]?.toUpperCase()}
                       </div>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground truncate">{other.username}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+                      {isGroup && (
+                        <span className="text-[9px] text-muted-foreground">
+                          ({conv.participants.length})
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground truncate">
-                      {conv.lastMessage || "Sohbet başlatıldı"}
+                      {conv.lastMessage || "Sohbet baslatildi"}
                     </p>
                   </div>
                   {conv.lastMessageAt && (
