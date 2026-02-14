@@ -97,7 +97,7 @@ export default function MainNav() {
         onClick={() => router.push("/dashboard")}
         className="mb-4 flex h-10 w-10 items-center justify-center hover:scale-110 active:scale-95 transition-transform"
       >
-        <img src="/logo.png" alt="KickSocially" className="h-11 w-11" />
+        <img src="/favicon.svg" alt="KickSocially" className="h-11 w-11" />
       </button>
 
       <div className="w-8 h-px bg-border mb-3" />

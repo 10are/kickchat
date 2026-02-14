@@ -18,8 +18,8 @@ export const metadata: Metadata = {
   title: "KickSocially",
   description: "Kick.com topluluğu için sosyal platform — mesajlaş, arkadaş bul, yayın izle",
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
+    icon: "/favicon.svg",
+    apple: "/favicon.svg",
   },
 };
 

@@ -101,7 +101,7 @@ export default function PopupChatPage() {
         <span className="flex-1 font-[family-name:var(--font-pixel)] text-[9px] text-foreground truncate">
           {otherUsername}
         </span>
-        <img src="/logo.png" alt="" className="h-5 w-5 shrink-0" />
+        <img src="/favicon.svg" alt="" className="h-5 w-5 shrink-0" />
       </div>
 
       {/* Messages */}

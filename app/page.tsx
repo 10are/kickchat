@@ -59,7 +59,7 @@ export default function Home() {
       <div className="flex flex-col items-center gap-10">
         {/* Logo */}
         <div className="flex flex-col items-center gap-4">
-          <img src="/logo.png" alt="KickSocially" className="h-28 w-28 drop-shadow-lg" />
+          <img src="/favicon.svg" alt="KickSocially" className="h-28 w-28 drop-shadow-lg" />
           <h1 className="font-[family-name:var(--font-pixel)] text-2xl text-kick">
             KICKSOCIALLY
           </h1>

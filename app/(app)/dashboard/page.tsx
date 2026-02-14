@@ -49,7 +49,6 @@ export default function DashboardPage() {
       title: "Drama",
       description: "Güncel dramalar ve tartışmalar",
       href: "/drama",
-      comingSoon: true,
       icon: (
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
           <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -97,11 +96,6 @@ export default function DashboardPage() {
                 </div>
                 <span className="text-xs font-medium text-foreground">{feature.title}</span>
                 <span className="text-[10px] text-muted-foreground leading-tight">{feature.description}</span>
-                {feature.comingSoon && (
-                  <span className="absolute top-2 right-2 font-[family-name:var(--font-pixel)] text-[6px] text-muted-foreground bg-surface-hover px-1.5 py-0.5 rounded">
-                    YAKINDA
-                  </span>
-                )}
               </button>
             ))}
           </div>
