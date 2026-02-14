@@ -39,6 +39,17 @@ const navItems = [
     ),
   },
   {
+    key: "watch",
+    label: "Yayın İzle",
+    href: "/watch",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="4" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
+        <path d="M9.5 8.5l5 3.5-5 3.5v-7z" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
     key: "dedikodu",
     label: "Dedikodu",
     href: "/dedikodu",
@@ -69,6 +80,7 @@ export default function MainNav() {
 
   const getActiveKey = () => {
     if (pathname.startsWith("/lfg")) return "lfg";
+    if (pathname.startsWith("/watch")) return "watch";
     if (pathname.startsWith("/dedikodu")) return "dedikodu";
     if (pathname.startsWith("/drama")) return "drama";
     if (pathname.startsWith("/chat")) return "chat";

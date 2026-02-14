@@ -120,14 +120,14 @@ export default function ChatSidebar() {
             {/* New chat button */}
             <button
               onClick={() => setShowSearch(true)}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-surface-hover border-b border-border"
+              className="flex w-full items-center gap-2 border-b border-border px-3 py-2.5 text-left transition-colors hover:bg-surface-hover"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-kick/10">
-                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" className="text-kick">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-kick/10">
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" className="text-kick">
                   <path d="M10 4v12M4 10h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </div>
-              <span className="font-[family-name:var(--font-pixel)] text-[9px] text-kick">
+              <span className="font-[family-name:var(--font-pixel)] text-[8px] text-kick">
                 YENI SOHBET
               </span>
             </button>
