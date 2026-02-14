@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/app/lib/AuthContext";
 import { doc, onSnapshot } from "firebase/firestore";
-import { db, Conversation, subscribeToConversations } from "@/app/lib/firestore";
+import { db, Conversation, subscribeToConversations, searchUsers, getOrCreateConversation, UserProfile } from "@/app/lib/firestore";
 import MessageList from "@/app/components/MessageList";
 import MessageInput from "@/app/components/MessageInput";
 
@@ -29,6 +29,10 @@ export default function WatchPage() {
   const [replyTo, setReplyTo] = useState<ReplyTo | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [chatCollapsed, setChatCollapsed] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Subscribe to all conversations (for the picker)
@@ -124,6 +128,29 @@ export default function WatchPage() {
   const selectConversation = (id: string) => {
     setActiveConvId(id);
     setConv(null);
+  };
+
+  const handleUserSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    try {
+      const users = await searchUsers(searchQuery.trim());
+      setSearchResults(users.filter((u) => u.kickUserId !== kickUser?.uid));
+    } catch (err) {
+      console.error("Search error:", err);
+    }
+    setSearching(false);
+  };
+
+  const handleStartChatWithUser = async (targetUser: UserProfile) => {
+    if (!kickUser) return;
+    const usernames = { [kickUser.uid]: kickUser.username, [targetUser.kickUserId]: targetUser.username };
+    const avatars = { [kickUser.uid]: kickUser.avatar, [targetUser.kickUserId]: targetUser.avatar };
+    const convId = await getOrCreateConversation(kickUser.uid, targetUser.kickUserId, usernames, avatars);
+    setShowSearch(false);
+    setSearchQuery("");
+    setSearchResults([]);
+    selectConversation(convId);
   };
 
   return (
@@ -294,14 +321,71 @@ export default function WatchPage() {
                   <span className="font-[family-name:var(--font-pixel)] text-[8px] text-kick flex-1">
                     SOHBET SEC
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {conversations.length} sohbet
-                  </span>
+                  <button
+                    onClick={() => setShowSearch(!showSearch)}
+                    className={`rounded-lg p-1.5 transition-colors ${showSearch ? "text-kick bg-kick/10" : "text-muted-foreground hover:text-foreground hover:bg-surface-hover"}`}
+                    title="Kullanıcı ara"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                      <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" strokeWidth="2" />
+                      <path d="M13 13l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </button>
                 </div>
+
+                {/* User search */}
+                {showSearch && (
+                  <div className="border-b border-border px-3 py-2 bg-surface-hover space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleUserSearch()}
+                        placeholder="Kullanıcı adı..."
+                        className="flex-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder-muted-foreground outline-none focus:border-kick"
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleUserSearch}
+                        disabled={searching}
+                        className="rounded-lg bg-kick px-2.5 py-1.5 text-xs font-medium text-black hover:bg-kick-hover transition-colors disabled:opacity-50"
+                      >
+                        {searching ? "..." : "Ara"}
+                      </button>
+                    </div>
+                    {searchResults.length > 0 && (
+                      <div className="space-y-0.5">
+                        {searchResults.map((user) => (
+                          <button
+                            key={user.kickUserId}
+                            onClick={() => handleStartChatWithUser(user)}
+                            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-surface-active transition-colors"
+                          >
+                            {user.avatar ? (
+                              <img src={user.avatar} alt="" className="h-7 w-7 rounded-full shrink-0" />
+                            ) : (
+                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-foreground shrink-0">
+                                {user.username[0]?.toUpperCase()}
+                              </div>
+                            )}
+                            <span className="text-xs text-foreground truncate">{user.username}</span>
+                            <svg width="12" height="12" viewBox="0 0 20 20" fill="none" className="text-kick shrink-0 ml-auto">
+                              <path d="M18 10c0 4.418-3.582 7-8 7a9.06 9.06 0 01-3-.5L2 18l1.5-3.5C2.5 13.5 2 11.846 2 10c0-4.418 3.582-8 8-8s8 3.582 8 8z" stroke="currentColor" strokeWidth="2" />
+                            </svg>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {searchResults.length === 0 && !searching && searchQuery && (
+                      <p className="text-center text-[10px] text-muted-foreground py-1">Kullanıcı bulunamadı</p>
+                    )}
+                  </div>
+                )}
 
                 {/* Conversation list */}
                 <div className="flex-1 overflow-y-auto">
-                  {conversations.length === 0 ? (
+                  {conversations.length === 0 && !showSearch ? (
                     <div className="flex flex-col items-center justify-center h-full gap-3 p-4">
                       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-muted-foreground opacity-40">
                         <path d="M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-3.68-.71L3 21l1.87-3.75C3.69 15.73 3 14 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="currentColor" strokeWidth="2" />

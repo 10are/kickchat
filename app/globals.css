@@ -32,17 +32,17 @@
 }
 
 .light {
-  --background: #fafafa;
-  --foreground: #18181b;
-  --kick: #53fc18;
-  --kick-hover: #45d916;
+  --background: #e8e6e3;
+  --foreground: #1c1917;
+  --kick: #41c711;
+  --kick-hover: #38ad0f;
   --kick-dark: #2d8a0e;
-  --surface: #ffffff;
-  --surface-hover: #f4f4f5;
-  --surface-active: #e4e4e7;
-  --border: #e4e4e7;
-  --muted: #d4d4d8;
-  --muted-foreground: #71717a;
+  --surface: #f0eeec;
+  --surface-hover: #e4e2df;
+  --surface-active: #d9d6d3;
+  --border: #ccc9c5;
+  --muted: #b8b4af;
+  --muted-foreground: #6b6660;
 }
 
 body {
